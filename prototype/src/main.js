@@ -1,8 +1,14 @@
 import Vue from 'vue'
 import App from './App.vue'
+import Router from './router.js'
+import VueKonva from 'vue-konva'
 
 Vue.config.productionTip = false
 
+Vue.use(VueKonva)
+
 new Vue({
-  render: h => h(App),
+  router: Router,
+  template: "<App/>",
+  render: h => h(App)
 }).$mount('#app')

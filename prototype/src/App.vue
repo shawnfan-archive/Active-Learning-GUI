@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <activeLearning></activeLearning>
+    <router-view></router-view>
   </div>
 </template>
 
