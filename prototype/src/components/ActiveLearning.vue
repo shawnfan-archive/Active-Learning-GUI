@@ -9,9 +9,16 @@
     <button v-on:click="setMarkerSize(20)">20</button>
     <button v-on:click="setMarkerSize(30)">30</button>
     <button v-on:click="setDrawMode('erase')">Eraser</button>
-    <v-stage ref="stage" :config="configStage" v-on:mousedown="correctActivation">
-      <v-layer ref="layer" :config="configLayer">
-        <v-image :config="configImage"></v-image>
+    <v-stage ref="stage" :config="configStage" v-on:mousemove="correctActivation">
+      <v-layer ref="layer" :config="configLayer" v-on:mousedown="toggleDrawing">
+        <v-image :config="{
+          image: image
+        }"></v-image>
+        <v-rect 
+          v-for="area in activationMap.activation"
+          :key="area.id"
+          :config="{x:scale*area.x, y:scale*area.y, width:scale*1, height:scale*1, fill:'white', opacity:0.5}"
+        ></v-rect>
         <v-circle
           v-for="marker in markers"
           :key="marker.markerID"
@@ -35,17 +42,16 @@ export default {
     return {
       activationMap: {},
       drawMode: "draw",
+      drawing: false,
       markerSize: 10,
       markers: [],
       configStage: {
         width: 500,
-        height: 500,
+        height: 500
       },
-      configLayer: {
-      },
-      configImage: {
-        image: new Image()
-      }
+      configLayer: {},
+      scale: 8,
+      image: null
     };
   },
   methods: {
@@ -67,14 +73,34 @@ export default {
       this.drawMode = "draw";
       this.markerSize = size;
     },
+    toggleDrawing: function(event) {
+      if (this.drawing === false) {
+        this.drawing = true;
+      } else {
+        this.drawing = false;
+      }
+      console.log(this.drawing);
+    },
     correctActivation: function(event) {
-      if(this.drawMode === "draw") {
+      console.log(event.target.className);
+      if (this.drawMode === "draw" && this.drawing === true) {
         let pos = this.$refs.stage.getStage().getPointerPosition();
-        let position = { x: pos.x, y: pos.y, markerSize: this.markerSize, markerID: this.markers.length };
+        let position = {
+          x: pos.x,
+          y: pos.y,
+          markerSize: this.markerSize,
+          markerID: this.markers.length
+        };
         this.markers.push(position);
-      } else if(event.target.className === "Circle") {
-        console.log(event.target.attrs.id)
-        this.markers = this.markers.filter(marker => marker.markerID !== event.target.attrs.id)
+      } else if (
+        this.drawMode === "erase" &&
+        event.target.className === "Circle" &&
+        this.drawing === true
+      ) {
+        console.log(event.target.attrs.id);
+        this.markers = this.markers.filter(
+          marker => marker.markerID !== event.target.attrs.id
+        );
       }
     },
     saveData: function(payload) {
@@ -94,7 +120,7 @@ export default {
       alert("Training in progress...");
     },
     onSubmit: function(event) {
-      const payload = {corrections: this.markers};
+      const payload = { corrections: this.markers };
       this.saveData(payload);
     }
   },
@@ -106,9 +132,10 @@ export default {
     this.getActivationMap();
   },
   mounted() {
-    this.configImage.image.src =
-      "https://www.radiologyinfo.org/gallery-items/images/picbrain.jpg";
-  }
+    let image = new Image();
+    image.src = require("../assets/pic1.jpeg");
+    this.image = image;
+  },
 };
 </script>
 
