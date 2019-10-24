@@ -1,18 +1,13 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-import numpy as np
 
 ActivationMaps = {
         'image_id': '1',
         'disease': "Parkinson's",
         'number_of_views': '100',
         'has_viewed': True,
-        'data': {},
-        'activation': []
+        'data': {}
 }
-
-filename1 = "/Users/shawnfan/active_learning_prototype/prototype/src/assets/matrix1.txt"
-brainMask = '/Users/shawnfan/active_learning_prototype/prototype/src/assets/brainMask.npy'
 
 def extractPixels(markers):
     pixels =[]
@@ -28,27 +23,6 @@ def extractPixels(markers):
                 if distance <= radius and [x, y] not in pixels:
                     pixels.append([x, y])
     return pixels
-
-def computeActivation(filename):
-    file = open(filename)
-    lines = file.readlines()
-    matrix = []
-    for line in lines:
-        processed_line = line.replace("\n", "")
-        splitted_line = processed_line.split(',')
-        row = []
-        for number in splitted_line:
-            row.append(float(number))
-        matrix.append(row)
-
-    # matrix = list(np.load(filename, allow_pickle=True))
-    indices = []
-    for row_number, row in enumerate(matrix):
-        for column_number, element in enumerate(row):
-            if element == 1:
-                indices.append({'x': column_number, 'y': row_number, 'id': len(indices)})
-        
-    return indices
 
 # instantiate the app
 app = Flask(__name__)
@@ -70,9 +44,7 @@ def all_patients():
         post_data = request.get_json()
         ActivationMaps['data'] = extractPixels(post_data.get('corrections'))
         response_object['message'] = 'Progress saved!'
-        response_object['activation_maps'] = ActivationMaps['data']
     else:
-        ActivationMaps['activation'] = computeActivation(filename1)
         response_object['activation_maps'] = ActivationMaps
     return jsonify(response_object)
 
