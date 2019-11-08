@@ -1,28 +1,35 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
+#activation map for brainpic0
+filename0 = "/Users/shawnfan/active_learning_prototype/prototype/src/assets/activation0_binary.txt"
+#activation map for brainpic1
+filename1 = "/Users/shawnfan/active_learning_prototype/prototype/src/assets/activation1_binary.txt"
+
 ActivationMaps = {
-        'image_id': '1',
-        'disease': "Parkinson's",
-        'number_of_views': '100',
-        'has_viewed': True,
-        'data': {}
+    'image_id': '00001',
+    'disease': "Parkinson's",
+    'filename': filename1,
+    'canvas_width': 0,
+    'canvas_height': 0,
+    'activation': [],
+    'corrected_activation': []
 }
 
-def extractPixels(markers):
-    pixels =[]
-    for marker in markers:
-        radius = marker['markerSize']
-        center_x = marker['x']
-        center_y = marker['y']
-        x_range = list(range(center_x - radius, center_x + radius + 1))
-        y_range = list(range(center_y - radius, center_y + radius + 1))
-        for x in x_range:
-            for y in y_range:
-                distance = (x - center_x)**2 + (y - center_y)**2
-                if distance <= radius and [x, y] not in pixels:
-                    pixels.append([x, y])
-    return pixels
+def extractActivationMap(filename):
+    activation_data = open(filename)
+    lines = activation_data.readlines()
+    activations = []
+
+    for line in lines:
+        line.replace('\n', '')
+        split_line = line.split(',')
+        row = []
+        for element in split_line:
+            row.append(float(element))
+        activations.append(row)
+
+    return activations
 
 # instantiate the app
 app = Flask(__name__)
@@ -42,10 +49,15 @@ def all_patients():
     response_object = {'status': 'success'}
     if request.method == 'POST':
         post_data = request.get_json()
-        ActivationMaps['data'] = extractPixels(post_data.get('corrections'))
+        ActivationMaps['corrected_activation'] = post_data.get(
+            'corrected_activation')
         response_object['message'] = 'Progress saved!'
     else:
-        response_object['activation_maps'] = ActivationMaps
+        activation = extractActivationMap(ActivationMaps['filename'])
+        ActivationMaps['activation'] = activation 
+        ActivationMaps['canvas_width'] = len(activation[0])
+        ActivationMaps['canvas_height'] = len(activation)
+        response_object['activation_map'] = ActivationMaps
     return jsonify(response_object)
 
 @app.route('/about_active_learning')
