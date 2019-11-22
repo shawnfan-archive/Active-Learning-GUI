@@ -1,6 +1,14 @@
 # Active-Learning-GUI
 
-### Sample Flask ML Model (flask_trees)
+### Flask Deep Learning Model
+
+First install dependencies
+
+```python
+conda create -n flask_unet python=3.7
+conda activate flask_unet
+pip install -r requirements.txt 
+```
 
 Run the following to start the server
 ```python

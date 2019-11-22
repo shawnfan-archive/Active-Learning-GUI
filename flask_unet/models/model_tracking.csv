@@ -1,0 +1,27 @@
+date,from_scratch,model_name
+"Tue, 12 Nov 2019 15:38:30 GMT",,unet_stroke_2019_11_12_15_38.hdf5
+"Wed, 13 Nov 2019 11:04:02 GMT",,unet_stroke_2019_11_13_11_4.hdf5
+"Wed, 13 Nov 2019 11:07:06 GMT",,unet_stroke_2019_11_13_11_7.hdf5
+"Wed, 13 Nov 2019 11:14:30 GMT",,unet_stroke_2019_11_13_11_14.hdf5
+"Wed, 13 Nov 2019 11:25:42 GMT",True,unet_stroke_2019_11_13_11_25_init.hdf5
+"Wed, 13 Nov 2019 11:28:26 GMT",False,unet_stroke_2019_11_13_11_28.hdf5
+"Wed, 13 Nov 2019 11:30:02 GMT",False,unet_stroke_2019_11_13_11_30.hdf5
+"Wed, 13 Nov 2019 11:33:30 GMT",False,unet_stroke_2019_11_13_11_33.hdf5
+"Wed, 13 Nov 2019 13:16:03 GMT",True,unet_stroke_2019_11_13_13_16_init.hdf5
+"Wed, 13 Nov 2019 13:52:22 GMT",False,unet_stroke_2019_11_13_13_52.hdf5
+"Wed, 13 Nov 2019 14:02:07 GMT",False,unet_stroke_2019_11_13_14_2.hdf5
+"Wed, 13 Nov 2019 14:08:54 GMT",False,unet_stroke_2019_11_13_14_8.hdf5
+"Wed, 13 Nov 2019 14:10:02 GMT",False,unet_stroke_2019_11_13_14_10.hdf5
+"Wed, 13 Nov 2019 14:21:35 GMT",True,unet_stroke_2019_11_13_14_21_init.hdf5
+"Wed, 13 Nov 2019 14:41:27 GMT",True,unet_stroke_2019_11_13_14_41_init.hdf5
+"Wed, 13 Nov 2019 14:50:15 GMT",False,unet_stroke_2019_11_13_14_50.hdf5
+"Wed, 13 Nov 2019 15:41:19 GMT",True,unet_stroke_2019_11_13_15_41_init.hdf5
+"Wed, 13 Nov 2019 15:44:29 GMT",False,unet_stroke_2019_11_13_15_44.hdf5
+"Wed, 13 Nov 2019 15:45:28 GMT",False,unet_stroke_2019_11_13_15_45.hdf5
+"Wed, 13 Nov 2019 15:51:36 GMT",True,unet_stroke_2019_11_13_15_51_init.hdf5
+"Wed, 13 Nov 2019 15:54:12 GMT",False,unet_stroke_2019_11_13_15_54.hdf5
+"Wed, 13 Nov 2019 15:57:13 GMT",False,unet_stroke_2019_11_13_15_57.hdf5
+"Wed, 13 Nov 2019 16:00:38 GMT",False,unet_stroke_2019_11_13_16_0.hdf5
+"Wed, 13 Nov 2019 22:12:01 GMT",True,unet_stroke_2019_11_13_22_12_init.hdf5
+"Wed, 13 Nov 2019 22:20:35 GMT",False,unet_stroke_2019_11_13_22_20.hdf5
+"Wed, 13 Nov 2019 22:22:11 GMT",False,unet_stroke_2019_11_13_22_22.hdf5

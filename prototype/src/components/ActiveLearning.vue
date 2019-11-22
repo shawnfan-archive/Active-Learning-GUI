@@ -1,135 +1,169 @@
 <template>
   <div id="main">
-    <p>Image ID: {{ activationMap.image_id }}</p>
-    <p>Disease: {{ activationMap.disease }}</p>
+    <h1>Image ID: {{ image.image_id }} Disease: {{ image.disease }}</h1>
     <div id="container">
-      <h2>Canvas Line {{activationMap.canvas_width}} by {{activationMap.canvas_height}}</h2>
+      <h2>Canvas Line {{canvas_width}} by {{canvas_height}}</h2>
       <!--canvas for brain image-->
-      <canvas class="canvas" ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+      <div class="canvas">
+        <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+      </div>
       <!--canvas for activation map-->
-      <canvas class="canvas" ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+      <div class="canvas">
+        <canvas ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+      </div>
+      <div class="canvas">
+        <canvas ref="cursor" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+      </div>
       <!--canvas for corrections-->
-      <canvas
-        class="canvas"
-        ref="draw"
-        v-bind:width="canvas_width"
-        v-bind:height="canvas_height"
-        v-on:mousemove="correctActivation"
-      ></canvas>
-      <!-- <canvas ref="result" width="436" height="364" style="border:1px solid #000000;"></canvas> -->
+      <div id="draw">
+        <canvas
+          ref="draw"
+          v-bind:width="canvas_width"
+          v-bind:height="canvas_height"
+          v-on:mousemove="correctActivation"
+        ></canvas>
+      </div>
     </div>
-    <div id="pixels">
-      <h2>Pixel Manipulation</h2>
-      <canvas
-        class="canvas1"
-        ref="pixel_img"
-        width="436"
-        height="364"
-        style="border:1px solid #000000;"
-        v-on:mousemove="correctTest"
-      ></canvas>
+    <div id="load">
+      <button id="load_button" v-on:click="loadActivationMap">Load Activation Map</button>
     </div>
-    <div id="buttons">
-      <button v-on:click="setTool('paintbrush')">Paintbrush</button>
-      <button v-on:click="setToolSize(5)">5</button>
-      <button v-on:click="setToolSize(10)">10</button>
-      <button v-on:click="setToolSize(20)">20</button>
-      <button v-on:click="setTool('eraser')">Eraser</button>
-      <button v-on:click="updateActivationMap">Update Activation Map</button>
-      <button v-on:click="onSubmit">Save</button>
+    <div id="save">
+      <button id="save_button" v-on:click="onSubmit">Save and Retrain Model</button>
     </div>
-    <canvas ref="test" width="436" height="364"></canvas>
+    <div id="graphics">
+      <div id="mode_buttons">
+        <h3>Mode:</h3>
+        <div>
+          <button class="mode_button" v-on:click="setTool('activate')">Activate</button>
+        </div>
+        <div>
+          <button class="mode_button" v-on:click="setTool('deactivate')">Deactivate</button>
+        </div>
+      </div>
+      <div id="size_buttons">
+        <h3>Paintbrush Size:</h3>
+        <button class="size_button" v-on:click="setToolSize(5)">5</button>
+        <button class="size_button" v-on:click="setToolSize(10)">10</button>
+        <button class="size_button" v-on:click="setToolSize(20)">20</button>
+      </div>
+    </div>
+    <!-- <canvas ref="test" width="436" height="364"></canvas> -->
   </div>
 </template>>
 
 <script>
 import axios from "axios";
-import Header from "./Header";
-import Footer from "./Footer";
 
 export default {
   data() {
     return {
+      image: {},
       activationMap: {},
+      tool: "deactivate",
       tool_started: false,
-      tool: "paintbrush",
       tool_size: 10,
       canvas_width: 436,
-      canvas_height: 346
+      canvas_height: 364,
+      graphics: {
+        // rgba
+        activation_color: [255, 0, 0, 100],
+        inactivation_color: [0, 0, 0, 0],
+        paintbrush: "rgba(0, 0, 255, 255)",
+        image_opacity: 1.0,
+        map_opacity: 0.8
+      }
     };
   },
   methods: {
+    setTool: function(tool) {
+      this.tool = tool;
+    },
+    setToolSize: function(tool_size) {
+      this.tool_size = tool_size;
+    },
     getActivationMap: function() {
       const path = "http://localhost:5000/active_learning";
       axios
         .get(path)
         .then(res => {
+          this.image = res.data.image;
           this.activationMap = res.data.activation_map;
-          this.drawImageAndActivation();
+          this.loadImage();
         })
         .catch(error => {
           console.error(error);
         });
     },
-    drawImageAndActivation: function() {
-      // input: n/a
-      // output: load brain image and activation map onto canvas
+    loadImage: function() {
       let img_ctx = this.$refs.img.getContext("2d");
       // set global opacity
-      img_ctx.globalAlpha = 0.8;
-      let pixel_ctx = this.$refs.pixel_img.getContext("2d");
-      pixel_ctx.globalAlpha = 0.8;
-      // draw brain scan
+      img_ctx.globalAlpha = this.graphics.image_opacity;
+      // load brain image
       let img = new Image();
-      img.src = require("../assets/brainpic1.jpeg");
+      //img.src = require("/Users/shawnfan/Dropbox/active_learning_20191115/Active-Learning-GUI/prototype/src/assets/brainpic1.jpeg")
+      img.src = require("/Users/shawnfan/Dropbox/active_learning_20191115/Active-Learning-GUI/flask_unet/output/resized_input.png");
       img.onload = () => {
         img_ctx.drawImage(img, 0, 0);
-        pixel_ctx.drawImage(img, 0, 0);
       };
-      // draw activation map
-      // create new ImageData object
+    },
+    loadCursor: function(x, y) {
+      let ctx = this.$refs.cursor.getContext("2d");
+      ctx.clearRect(0, 0, this.canvas_width, this.canvas_height);
+      ctx.fillStyle = "rgba(255,255,255,255)";
+      ctx.beginPath();
+      ctx.arc(x, y, this.tool_size / 2, 0, 2 * Math.PI);
+      ctx.fill();
+    },
+    loadActivationMap: function() {
       let map_ctx = this.$refs.map.getContext("2d");
-      map_ctx.globalAlpha = 0.8;
-      let activation_map = map_ctx.createImageData(
+      map_ctx.globalAlpha = this.graphics.map_opacity;
+      let map_data = map_ctx.createImageData(
         this.canvas_width,
         this.canvas_height
       );
-      for (let i = 0; i < activation_map.height; i++) {
-        for (let k = 0; k < activation_map.width; k++) {
-          let map_index = 4 * (activation_map.width * i + k);
+      for (let i = 0; i < map_data.height; i++) {
+        for (let k = 0; k < map_data.width; k++) {
+          let map_index = 4 * (map_data.width * i + k);
           if (this.activationMap.activation[i][k] === 1) {
-            // (255, 0, 0) = red
-            activation_map.data[map_index] = 255;
-            activation_map.data[map_index + 1] = 0;
-            activation_map.data[map_index + 2] = 0;
-            // opacity: 0 - 255
-            activation_map.data[map_index + 3] = 100;
+            map_data.data[map_index] = this.graphics.activation_color[0];
+            map_data.data[map_index + 1] = this.graphics.activation_color[1];
+            map_data.data[map_index + 2] = this.graphics.activation_color[2];
+            map_data.data[map_index + 3] = this.graphics.activation_color[3];
           } else {
-            // (0, 0, 0) = black
-            activation_map.data[map_index] = 0;
-            activation_map.data[map_index + 1] = 0;
-            activation_map.data[map_index + 2] = 0;
-            activation_map.data[map_index + 3] = 0;
+            map_data.data[map_index] = this.graphics.inactivation_color[0];
+            map_data.data[map_index + 1] = this.graphics.inactivation_color[1];
+            map_data.data[map_index + 2] = this.graphics.inactivation_color[2];
+            map_data.data[map_index + 3] = this.graphics.inactivation_color[3];
           }
         }
       }
-      map_ctx.putImageData(activation_map, 0, 0);
+      map_ctx.putImageData(map_data, 0, 0);
     },
     correctActivation: function(event) {
+      // load cursor
+      this.loadCursor(event.offsetX, event.offsetY);
+
       // highlight incorrect activation
       let canvas = this.$refs.draw;
       let ctx = this.$refs.draw.getContext("2d");
-      if (this.tool === "paintbrush") {
-        ctx.strokeStyle = "blue";
-        ctx.globalCompositeOperation = "source-over";
-      } else {
-        ctx.strokeStyle = "rgba(255, 0, 0, 0.5)";
-        ctx.globalCompositeOperation = "destination-out";
-      }
+      ctx.strokeStyle = this.graphics.paintbrush;
+      ctx.fillStyle = this.graphics.paintbrush;
+      ctx.globalCompositeOperation = "source-over";
       ctx.lineJoin = "round";
       ctx.lineWidth = this.tool_size;
+      // start drawing
       canvas.onmousedown = () => {
-        // start drawing
+        // draw circle
+        ctx.beginPath();
+        ctx.arc(
+          event.offsetX,
+          event.offsetY,
+          this.tool_size / 2,
+          0,
+          2 * Math.PI
+        );
+        ctx.fill();
+        this.updateActivationMap();
         this.tool_started = true;
         ctx.beginPath();
         ctx.moveTo(event.offsetX, event.offsetY);
@@ -137,76 +171,25 @@ export default {
       if (this.tool_started) {
         ctx.lineTo(event.offsetX, event.offsetY);
         ctx.stroke();
+        this.updateActivationMap();
       }
       canvas.onmouseup = () => {
         // stop drawing
         if (this.tool_started) {
           this.tool_started = false;
         }
-      };
-    },
-    correctTest: function(event) {
-      let canvas = this.$refs.pixel_img;
-      let ctx = this.$refs.pixel_img.getContext("2d");
-      let map = ctx.getImageData(
-        0,
-        0,
-        this.canvas_width,
-        this.canvas_height
-      );
-      canvas.onmousedown = () => {
-        this.tool_started = true;
-      };
-      if (this.tool_started) {
-        let pixelIndices = this.computeToolPixels(
+        // draw circle
+        ctx.beginPath();
+        ctx.arc(
           event.offsetX,
           event.offsetY,
-          this.tool_size
+          this.tool_size / 2,
+          0,
+          2 * Math.PI
         );
-        for (let i = 0; i < pixelIndices.length; i++) {
-          let index = (436 * pixelIndices[i][1] + pixelIndices[i][0]) * 4;
-          map.data[index] = 0;
-          map.data[index + 1] = 0;
-          map.data[index + 2] = 0;
-          map.data[index + 3] = 255;
-        }
-        // // single pixel
-        // let index = (436 * event.offsetY + event.offsetX) * 4;
-        // map.data[index] = 0;
-        // map.data[index + 1] = 0;
-        // map.data[index + 2] = 0;
-        // map.data[index + 3] = 255;
-        ctx.putImageData(map, 0, 0);
-      }
-      canvas.onmouseup = () => {
-        if (this.tool_started) {
-          this.tool_started = false;
-        }
+        ctx.fill();
+        this.updateActivationMap();
       };
-    },
-    computeToolPixels: function(x, y, radius) {
-      // compute x and y coordinates of all pixels covered by circle with center at (x, y) and radius
-      let pixels = [];
-      let i = 0;
-      let j = 0;
-      let i_start = x - radius;
-      let j_start = y - radius;
-      let i_end = x + radius;
-      let j_end = y + radius;
-      for (i = i_start; i < i_end; i++) {
-        for (j = j_start; j < j_end; j++) {
-          if (Math.sqrt((i - x) ** 2 + (j - y) ** 2) < radius) {
-            pixels.push([i, j]);
-          }
-        }
-      }
-      return pixels;
-    },
-    setTool: function(tool) {
-      this.tool = tool;
-    },
-    setToolSize: function(tool_size) {
-      this.tool_size = tool_size;
     },
     updateActivationMap: function() {
       let map_ctx = this.$refs.map.getContext("2d");
@@ -223,21 +206,28 @@ export default {
         this.canvas_width,
         this.canvas_height
       );
+
+      let pixel_color = this.graphics.activation_color;
+      if (this.tool === "deactivate") {
+        pixel_color = this.graphics.inactivation_color;
+      }
+
       let updated_map_data = map_ctx.createImageData(map_data);
-      console.log(correction_data);
       for (let i = 0; i < correction_data.data.length; i += 4) {
         if (correction_data.data[i + 2] === 255) {
-          map_data.data[i] = 0;
-          map_data.data[i + 1] = 0;
-          map_data.data[i + 2] = 0;
-          map_data.data[i + 3] = 0;
+          map_data.data[i] = pixel_color[0];
+          map_data.data[i + 1] = pixel_color[1];
+          map_data.data[i + 2] = pixel_color[2];
+          map_data.data[i + 3] = pixel_color[3];
         }
       }
-      // clear drawing
-      let clear_data = map_ctx.createImageData(map_data);
-      draw_ctx.putImageData(clear_data, 0, 0);
+
       // draw updated activation map
       map_ctx.putImageData(map_data, 0, 0);
+
+      // clear draw
+      let clear_data = map_ctx.createImageData(map_data);
+      draw_ctx.putImageData(clear_data, 0, 0);
     },
     saveData: function(payload) {
       const path = "http://localhost:5000/active_learning";
@@ -258,18 +248,14 @@ export default {
       let corrected_map = map_ctx.getImageData(
         0,
         0,
-        this.activationMap.canvas_width,
-        this.activationMap.canvas_height
+        this.canvas_width,
+        this.canvas_height
       );
       let test_ctx = this.$refs.test.getContext("2d");
       test_ctx.putImageData(corrected_map, 0, 0);
-      const payload = {corrected_activation: corrected_map.data};
+      const payload = { corrected_activation: corrected_map.data };
       this.saveData(payload);
     }
-  },
-  components: {
-    "app-header": Header,
-    "app-footer": Footer
   },
   created() {
     this.getActivationMap();
@@ -279,28 +265,60 @@ export default {
 </script>
 
 <style scoped>
-#main {
-  position: relative;
-}
 #container {
   position: relative;
-  float: left;
 }
 .canvas {
   position: absolute;
-  top: 20;
-  left: 10;
+  cursor: none;
 }
-#pixels {
+#draw {
   position: relative;
-  float: right;
+  cursor: none;
+  float: left;
 }
-.canvas1 {
+#load {
   position: relative;
-  float: right;
+  float: left;
+  padding: 1em;
 }
-#buttons {
+#load_button {
+  background-color: white;
+  color: navy;
+  text-align: center;
+  font-size: 26px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+#save {
   position: relative;
-  clear: both;
+  float: left;
+  padding: 1em
+}
+#save_button {
+  background-color: white;
+  color: navy;
+  text-align: center;
+  font-size: 26px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+#graphics {
+  position: relative;
+  float: left;
+  padding: 1em;
+}
+#mode_buttons{
+  float: left;
+}
+.mode_button {
+  font-size: 24px;
+  border-radius: 40%;
+  padding: 0.5em;
+}
+#size_buttons {
+  float: left;
+}
+.size_button {
+  font-size: 20px;
+  border-radius: 50%;
 }
 </style>
