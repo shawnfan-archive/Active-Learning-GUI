@@ -1,8 +1,8 @@
 <template>
   <div id="main">
-    <h1>Image ID: {{ image.image_id }} Disease: {{ image.disease }}</h1>
+    <h1>Image ID: {{ current_image.image_id }} Disease: {{ current_image.disease }}</h1>
     <div id="container">
-      <h2>Canvas Line {{canvas_width}} by {{canvas_height}}</h2>
+      <h2>Canvas: {{canvas_width}} by {{canvas_height}}</h2>
       <!--canvas for brain image-->
       <div class="canvas">
         <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
@@ -47,7 +47,16 @@
         <button class="size_button" v-on:click="setToolSize(20)">20</button>
       </div>
     </div>
-    <!-- <canvas ref="test" width="436" height="364"></canvas> -->
+    <div class="thumbnails">
+      <div class="thumbnail_image" v-for="image in images" v-bind:key="image.id">
+        <img
+          :src="require(`../assets/${image.path}.jpeg`)"
+          weight="100"
+          height="100"
+          v-on:click="loadImage(image)"
+        />
+      </div>
+    </div>
   </div>
 </template>>
 
@@ -57,7 +66,19 @@ import axios from "axios";
 export default {
   data() {
     return {
-      image: {},
+      current_image: {
+        image_id: "",
+        disease: "",
+        path: ""
+      },
+      image: [],
+      images: [
+        // {
+        //   id: "00001",
+        //   disease: "Stroke",
+        //   path: "Site6_031923___100"
+        // },
+      ],
       activationMap: {},
       tool: "deactivate",
       tool_started: false,
@@ -86,25 +107,26 @@ export default {
       axios
         .get(path)
         .then(res => {
-          this.image = res.data.image;
+          this.images = res.data.images;
           this.activationMap = res.data.activation_map;
-          this.loadImage();
+          // load first image in images
+          this.loadImage(this.images[0]);
         })
         .catch(error => {
           console.error(error);
         });
     },
-    loadImage: function() {
+    loadImage: function(image) {
+      this.current_image = image;
       let img_ctx = this.$refs.img.getContext("2d");
       // set global opacity
       img_ctx.globalAlpha = this.graphics.image_opacity;
-      // load brain image
       let img = new Image();
-      //img.src = require("/Users/shawnfan/Dropbox/active_learning_20191115/Active-Learning-GUI/prototype/src/assets/brainpic1.jpeg")
-      img.src = require("/Users/shawnfan/Dropbox/active_learning_20191115/Active-Learning-GUI/flask_unet/output/resized_input.png");
+      img.src = require(`../assets/${image.path}.jpeg`);
       img.onload = () => {
-        img_ctx.drawImage(img, 0, 0);
+        img_ctx.drawImage(img, 0, 0, this.canvas_width, this.canvas_height);
       };
+      // find corresponding image id
     },
     loadCursor: function(x, y) {
       let ctx = this.$refs.cursor.getContext("2d");
@@ -251,9 +273,15 @@ export default {
         this.canvas_width,
         this.canvas_height
       );
-      let test_ctx = this.$refs.test.getContext("2d");
-      test_ctx.putImageData(corrected_map, 0, 0);
-      const payload = { corrected_activation: corrected_map.data };
+      let corrected_activation = [];
+      for (let i = 0; i < corrected_map.data.length; i += 4) {
+        if (corrected_map.data[i] === 255) {
+          corrected_activation.push(1);
+        } else {
+          corrected_activation.push(0);
+        }
+      }
+      const payload = { image: this.current_image, corrected_activation: corrected_activation };
       this.saveData(payload);
     }
   },
@@ -292,7 +320,7 @@ export default {
 #save {
   position: relative;
   float: left;
-  padding: 1em
+  padding: 1em;
 }
 #save_button {
   background-color: white;
@@ -306,7 +334,7 @@ export default {
   float: left;
   padding: 1em;
 }
-#mode_buttons{
+#mode_buttons {
   float: left;
 }
 .mode_button {
