@@ -1,63 +1,109 @@
 <template>
-  <div id="main">
-    <h1>Image ID: {{ current_image.image_id }} Disease: {{ current_image.disease }}</h1>
-    <div id="container">
-      <h2>Canvas: {{canvas_width}} by {{canvas_height}}</h2>
-      <!--canvas for brain image-->
-      <div class="canvas">
-        <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-      </div>
-      <!--canvas for activation map-->
-      <div class="canvas">
-        <canvas ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-      </div>
-      <div class="canvas">
-        <canvas ref="cursor" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-      </div>
-      <!--canvas for corrections-->
-      <div id="draw">
-        <canvas
-          ref="draw"
-          v-bind:width="canvas_width"
-          v-bind:height="canvas_height"
-          v-on:mousemove="correctActivation"
-        ></canvas>
-      </div>
-    </div>
-    <div id="load">
-      <button id="load_button" v-on:click="loadActivationMap">Load Activation Map</button>
-    </div>
-    <div id="save">
-      <button id="save_button" v-on:click="onSubmit">Save and Retrain Model</button>
-    </div>
-    <div id="graphics">
-      <div id="mode_buttons">
-        <h3>Mode:</h3>
-        <div>
-          <button class="mode_button" v-on:click="setTool('activate')">Activate</button>
-        </div>
-        <div>
-          <button class="mode_button" v-on:click="setTool('deactivate')">Deactivate</button>
-        </div>
-      </div>
-      <div id="size_buttons">
-        <h3>Paintbrush Size:</h3>
-        <button class="size_button" v-on:click="setToolSize(5)">5</button>
-        <button class="size_button" v-on:click="setToolSize(10)">10</button>
-        <button class="size_button" v-on:click="setToolSize(20)">20</button>
-      </div>
-    </div>
-    <div class="thumbnails">
-      <div class="thumbnail_image" v-for="image in images" v-bind:key="image.id">
-        <img
-          :src="require(`../assets/${image.path}.jpeg`)"
-          weight="100"
-          height="100"
-          v-on:click="loadImage(image)"
-        />
-      </div>
-    </div>
-  </div>
+  <v-app id="main">
+    <v-container align-center justify-center>
+      <v-toolbar dense class="my-8">
+        <v-toolbar-title>Image ID: {{ current_image.image_id }} Disease: {{ current_image.disease }}</v-toolbar-title>
+
+        <v-spacer></v-spacer>
+
+        <v-toolbar-items>
+          <v-btn text v-on:click="onSubmit">Save and Retrain Model</v-btn>
+          <v-btn text v-on:click="loadActivationMap">Load Activation Map</v-btn>
+        </v-toolbar-items>
+      </v-toolbar>
+
+      <!-- <div id="container"> -->
+      <v-row align="center" justify="center">
+        <h2>Canvas: {{canvas_width}} by {{canvas_height}}</h2>
+      </v-row>
+
+      <v-row align="center" justify="center">
+        <v-col>
+          <!-- <v-row justify="end"> -->
+
+          <p>Size</p>
+          <v-btn-toggle class="my-1">
+            <v-btn text v-on:click="setToolSize(5)">5</v-btn>
+            <v-btn text v-on:click="setToolSize(10)">10</v-btn>
+            <v-btn text v-on:click="setToolSize(20)">20</v-btn>
+          </v-btn-toggle>
+
+          <p>Mode</p>
+          <v-btn-toggle class="my-1">
+            <v-btn v-on:click="setTool('activate')">
+            <v-icon>mdi-eraser</v-icon>
+            </v-btn>
+            <v-btn v-on:click="setTool('deactivate')">
+            <v-icon>mdi-brush</v-icon>
+            </v-btn>
+          </v-btn-toggle>
+          <!-- </v-row> -->
+        </v-col>
+
+        <v-col>
+          <!--canvas for brain image-->
+          <div class="canvas">
+            <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+          </div>
+          <!--canvas for activation map-->
+          <div class="canvas">
+            <canvas ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+          </div>
+          <div class="canvas">
+            <canvas ref="cursor" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+          </div>
+          <!--canvas for corrections-->
+          <div id="draw">
+            <canvas
+              ref="draw"
+              v-bind:width="canvas_width"
+              v-bind:height="canvas_height"
+              v-on:mousemove="correctActivation"
+            ></canvas>
+          </div>
+        </v-col>
+
+        <v-col>
+          <!-- <div class="thumbnail_image" v-for="image in images" v-bind:key="image.id">
+            <img
+              :src="require(`../assets/${image.path}.jpeg`)"
+              weight="100"
+              height="100"
+              v-on:click="loadImage(image)"
+            />
+          </div>-->
+        </v-col>
+      </v-row>
+      <!-- </div> -->
+
+      <v-row alight="center" justify="center">
+        <v-sheet light elevation="12" max-width="500" class="ma-8">
+          <v-slide-group show-arrows>
+            <v-slide-item class="ma-4" v-for="image in images" :key="image.id">
+              <v-card width="100">
+                <v-img
+                  contain
+                  :src="require(`../assets/${image.path}.jpeg`)"
+                  weight="100"
+                  height="100"
+                  v-on:click="loadImage(image)"
+                />
+              </v-card>
+            </v-slide-item>
+          </v-slide-group>
+        </v-sheet>
+      </v-row>
+
+      <v-dialog v-model="loading" persistent>
+        <v-card color="primary">
+          <v-card-text>
+            {{ loading_message }}
+            <v-progress-linear indeterminate color="white"></v-progress-linear>
+          </v-card-text>
+        </v-card>
+      </v-dialog>
+    </v-container>
+  </v-app>
 </template>>
 
 <script>
@@ -92,8 +138,21 @@ export default {
         paintbrush: "rgba(0, 0, 255, 255)",
         image_opacity: 1.0,
         map_opacity: 0.8
-      }
+      },
+      loading: false,
+      check_number: 1,
+      current_epoch: null,
+      loading_message: "Initializing Training..."
     };
+  },
+  watch: {
+    check_number: function() {
+      if (this.loading) {
+        setTimeout(this.updateTrainingProgress, 10000)
+      } else {
+        return null
+      }
+    }
   },
   methods: {
     setTool: function(tool) {
@@ -256,13 +315,16 @@ export default {
       axios
         .post(path, payload)
         .then(() => {
-          alert("Progress saved!");
+          //alert("Progress saved!");
+          this.loading = false;
           this.getActivationMap();
         })
         .catch(error => {
           console.log(error);
           this.getActivationMap();
         });
+
+      setTimeout(this.updateTrainingProgress, 10000);
     },
     onSubmit: function(event) {
       this.updateActivationMap();
@@ -281,8 +343,27 @@ export default {
           corrected_activation.push(0);
         }
       }
-      const payload = { image: this.current_image, corrected_activation: corrected_activation };
+      const payload = {
+        image: this.current_image,
+        corrected_activation: corrected_activation
+      };
       this.saveData(payload);
+      this.loading = true;
+    },
+    updateTrainingProgress: function() {
+      const path = "http://localhost:5000/training_progress";
+      axios
+        .get(path)
+        .then(res => {
+          this.current_epoch = res.data.current_epoch;
+          console.log(this.current_epoch);
+          this.loading_message =
+            "Current epoch:" + String(this.current_epoch) + "/10";
+          this.check_number = this.check_number + 1;
+        })
+        .catch(error => {
+          console.error(error);
+        });
     }
   },
   created() {
@@ -305,48 +386,9 @@ export default {
   cursor: none;
   float: left;
 }
-#load {
-  position: relative;
-  float: left;
-  padding: 1em;
-}
-#load_button {
-  background-color: white;
-  color: navy;
-  text-align: center;
-  font-size: 26px;
-  font-family: Arial, Helvetica, sans-serif;
-}
-#save {
-  position: relative;
-  float: left;
-  padding: 1em;
-}
-#save_button {
-  background-color: white;
-  color: navy;
-  text-align: center;
-  font-size: 26px;
-  font-family: Arial, Helvetica, sans-serif;
-}
 #graphics {
   position: relative;
   float: left;
   padding: 1em;
-}
-#mode_buttons {
-  float: left;
-}
-.mode_button {
-  font-size: 24px;
-  border-radius: 40%;
-  padding: 0.5em;
-}
-#size_buttons {
-  float: left;
-}
-.size_button {
-  font-size: 20px;
-  border-radius: 50%;
 }
 </style>

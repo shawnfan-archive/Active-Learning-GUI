@@ -36,13 +36,25 @@ images = [{
     "disease": "Stroke",
     "path": "Site6_031923___101"
 }, {
+    "image_id": "00002",
+    "disease": "Stroke",
+    "path": "Site6_031923___101 copy"
+},{
     "image_id": "00003",
     "disease": "Stroke",
     "path": "Site6_031923___102"
 }, {
+    "image_id": "00003",
+    "disease": "Stroke",
+    "path": "Site6_031923___102 copy"
+}, {
     "image_id": "00004",
     "disease": "Stroke",
     "path": "Site6_031923___103"
+}, {
+    "image_id": "00004",
+    "disease": "Stroke",
+    "path": "Site6_031923___103 copy"
 }]
 
 activation_map = {'filename': 'output/resized_input.png', 'activation': []}
@@ -73,9 +85,10 @@ def resizeImage(data):
     io.imsave(("output/resized_input.png"), data / 100)
     return None
 
-
 #Callback that will keep track of training times
 class TimeHistory(keras.callbacks.Callback):
+
+    current_epoch = 0
 
     #Once training begins...
     def on_train_begin(self, logs={}):
@@ -99,6 +112,7 @@ class TimeHistory(keras.callbacks.Callback):
         #Calculate and append elapsed time
         elapsed = (time.time() - self.epoch_time_start)
         self.times.append(elapsed)
+        TimeHistory.current_epoch = TimeHistory.current_epoch + 1
 
         #Write to file
         with open("testfile.txt", "a") as file:
@@ -429,7 +443,7 @@ def train_from_scratch():
 
         #Train model
         model.fit_generator(myGene,
-                            steps_per_epoch=5,
+                            steps_per_epoch=1,
                             epochs=10,
                             callbacks=[model_checkpoint, time_callback])
 
@@ -443,6 +457,13 @@ def train_from_scratch():
         #Return result
         return jsonify(data)
 
+#Get model training progress
+@app.route('/training_progress', methods=['GET'])
+def check_training_progress():
+
+    response_object = {'current_epoch': TimeHistory.current_epoch}
+
+    return jsonify(response_object)
 
 if __name__ == '__main__':
     app.run(debug=True)

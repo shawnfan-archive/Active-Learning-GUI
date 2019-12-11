@@ -34,3 +34,17 @@ date,from_scratch,model_name
 "Wed, 04 Dec 2019 14:02:30 GMT",True,unet_stroke_2019_12_4_14_2_init.hdf5
 "Wed, 04 Dec 2019 14:31:14 GMT",True,unet_stroke_2019_12_4_14_31_init.hdf5
 "Wed, 04 Dec 2019 14:40:04 GMT",True,unet_stroke_2019_12_4_14_40_init.hdf5
+"Tue, 10 Dec 2019 23:00:02 GMT",True,unet_stroke_2019_12_10_23_0_init.hdf5
+"Tue, 10 Dec 2019 23:03:35 GMT",True,unet_stroke_2019_12_10_23_3_init.hdf5
+"Tue, 10 Dec 2019 23:04:35 GMT",True,unet_stroke_2019_12_10_23_4_init.hdf5
+"Tue, 10 Dec 2019 23:05:13 GMT",True,unet_stroke_2019_12_10_23_5_init.hdf5
+"Tue, 10 Dec 2019 23:25:00 GMT",True,unet_stroke_2019_12_10_23_25_init.hdf5
+"Wed, 11 Dec 2019 00:20:18 GMT",True,unet_stroke_2019_12_11_0_20_init.hdf5
+"Wed, 11 Dec 2019 00:20:46 GMT",True,unet_stroke_2019_12_11_0_20_init.hdf5
+"Wed, 11 Dec 2019 00:31:42 GMT",True,unet_stroke_2019_12_11_0_31_init.hdf5
+"Wed, 11 Dec 2019 00:33:20 GMT",True,unet_stroke_2019_12_11_0_33_init.hdf5
+"Wed, 11 Dec 2019 00:38:12 GMT",True,unet_stroke_2019_12_11_0_38_init.hdf5
+"Wed, 11 Dec 2019 00:44:41 GMT",True,unet_stroke_2019_12_11_0_44_init.hdf5
+"Wed, 11 Dec 2019 10:11:25 GMT",True,unet_stroke_2019_12_11_10_11_init.hdf5
+"Wed, 11 Dec 2019 10:33:08 GMT",True,unet_stroke_2019_12_11_10_33_init.hdf5
+"Wed, 11 Dec 2019 11:07:49 GMT",True,unet_stroke_2019_12_11_11_7_init.hdf5

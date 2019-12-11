@@ -12,9 +12,11 @@
     "core-js": "^2.6.5",
     "konva": "^4.0.13",
     "vue": "^2.6.10",
-    "vue-konva": "^2.0.11"
+    "vue-konva": "^2.0.11",
+    "vuetify": "^2.1.13"
   },
   "devDependencies": {
+    "@mdi/font": "^4.7.95",
     "@vue/cli-plugin-babel": "^3.11.0",
     "@vue/cli-plugin-eslint": "^3.11.0",
     "@vue/cli-service": "^3.11.0",
