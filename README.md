@@ -2,19 +2,24 @@
 
 ### Flask Deep Learning Model
 
-First install dependencies
+First install dependencies for the server
 
 ```python
 conda create -n flask_unet python=3.7
 conda activate flask_unet
 pip install -r requirements.txt 
+pip install -U flask-cors
 ```
 
 Run the following to start the server
 ```python
 python app.py
 ```
-And then run the following to make a prediction
+
+
+Then install dependencies for the app
 ```python
-python request.py
+cd prototype
+npm install --save vue-router
+npm run serve
 ```

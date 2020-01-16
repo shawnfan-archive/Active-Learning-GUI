@@ -48,3 +48,14 @@ date,from_scratch,model_name
 "Wed, 11 Dec 2019 10:11:25 GMT",True,unet_stroke_2019_12_11_10_11_init.hdf5
 "Wed, 11 Dec 2019 10:33:08 GMT",True,unet_stroke_2019_12_11_10_33_init.hdf5
 "Wed, 11 Dec 2019 11:07:49 GMT",True,unet_stroke_2019_12_11_11_7_init.hdf5
+"Sun, 15 Dec 2019 21:43:29 GMT",True,unet_stroke_2019_12_15_21_43_init.hdf5
+"Sun, 22 Dec 2019 06:34:39 GMT",True,unet_stroke_2019_12_22_6_34_init.hdf5
+"Sun, 22 Dec 2019 06:47:44 GMT",True,unet_stroke_2019_12_22_6_47_init.hdf5
+"Sun, 22 Dec 2019 08:02:58 GMT",False,unet_stroke_2019_12_22_8_2.hdf5
+"Sun, 22 Dec 2019 08:40:00 GMT",False,unet_stroke_2019_12_22_8_40.hdf5
+"Tue, 24 Dec 2019 09:43:26 GMT",False,unet_stroke_2019_12_24_9_43.hdf5
+"Tue, 24 Dec 2019 10:09:18 GMT",False,unet_stroke_2019_12_24_10_9.hdf5
+"Tue, 24 Dec 2019 10:48:51 GMT",False,unet_stroke_2019_12_24_10_48.hdf5
+"Wed, 25 Dec 2019 10:39:37 GMT",False,unet_stroke_2019_12_25_10_39.hdf5
+"Wed, 25 Dec 2019 10:54:15 GMT",False,unet_stroke_2019_12_25_10_54.hdf5
+"Wed, 08 Jan 2020 10:50:51 GMT",False,unet_stroke_2020_1_8_10_50.hdf5

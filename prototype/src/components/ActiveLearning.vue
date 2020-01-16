@@ -1,105 +1,150 @@
 <template>
   <v-app id="main">
     <v-container align-center justify-center>
-      <v-toolbar dense class="my-8">
-        <v-toolbar-title>Image ID: {{ current_image.image_id }} Disease: {{ current_image.disease }}</v-toolbar-title>
+      <!-- Toolbar -->
+      <v-row>
+        <v-toolbar dense prominent class="my-8">
+          <v-app-bar-nav-icon></v-app-bar-nav-icon>
 
-        <v-spacer></v-spacer>
+          <v-toolbar-title>An Active Learning Approach to Acute Stroke Detection</v-toolbar-title>
 
-        <v-toolbar-items>
-          <v-btn text v-on:click="onSubmit">Save and Retrain Model</v-btn>
-          <v-btn text v-on:click="loadActivationMap">Load Activation Map</v-btn>
-        </v-toolbar-items>
-      </v-toolbar>
+          <v-spacer></v-spacer>
 
-      <!-- <div id="container"> -->
-      <v-row align="center" justify="center">
-        <h2>Canvas: {{canvas_width}} by {{canvas_height}}</h2>
+          <v-toolbar-items>
+            <v-btn text v-on:click="openDialog">
+              Save and Retrain Model
+              <v-icon>mdi-upload</v-icon>
+            </v-btn>
+            <v-btn text>
+              Settings
+              <v-icon>mdi-settings</v-icon>
+            </v-btn>
+          </v-toolbar-items>
+        </v-toolbar>
       </v-row>
 
+      <!-- User interface -->
+      <v-card class="mx-auto" max-width="900">
+        <v-container>
+          <v-row align="center" justify="center">
+            <v-col cols="auto">
+              <v-col>
+                <v-btn class="mx-2" fab dark color="cyan" v-on:click="setTool('activate')">
+                  <v-icon dark>mdi-pencil</v-icon>
+                </v-btn>
+              </v-col>
+
+              <v-col>
+                <v-btn class="mx-2" fab dark color="teal" v-on:click="setTool('deactivate')">
+                  <v-icon dark>mdi-eraser</v-icon>
+                </v-btn>
+              </v-col>
+
+              <v-col>
+                <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(20)">
+                  <v-icon size="25">mdi-checkbox-blank-circle</v-icon>
+                </v-btn>
+              </v-col>
+              <v-col>
+                <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(10)">
+                  <v-icon size="12.5">mdi-checkbox-blank-circle</v-icon>
+                </v-btn>
+              </v-col>
+              <v-col>
+                <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(5)">
+                  <v-icon size="7.5">mdi-checkbox-blank-circle</v-icon>
+                </v-btn>
+              </v-col>
+            </v-col>
+
+            <!-- Canvases -->
+            <v-col cols="auto">
+              <v-row align="center" justify="center">
+                <h2>Image ID: {{ current_image.image_id }}</h2>
+
+                <v-divider class="mx-4" vertical></v-divider>
+
+                <h2>Disease: {{ current_image.disease }}</h2>
+              </v-row>
+              <!--canvas for brain image-->
+              <div class="canvas">
+                <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+              </div>
+              <!--canvas for activation map-->
+              <div class="canvas">
+                <canvas ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+              </div>
+              <div class="canvas">
+                <canvas ref="cursor" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+              </div>
+              <!--canvas for corrections-->
+              <div id="draw">
+                <canvas
+                  ref="draw"
+                  v-bind:width="canvas_width"
+                  v-bind:height="canvas_height"
+                  v-on:mousemove="correctActivation"
+                ></canvas>
+              </div>
+            </v-col>
+          </v-row>
+        </v-container>
+      </v-card>
+
+      <!-- Image carousel -->
       <v-row align="center" justify="center">
-        <v-col>
-          <!-- <v-row justify="end"> -->
-
-          <p>Size</p>
-          <v-btn-toggle class="my-1">
-            <v-btn text v-on:click="setToolSize(5)">5</v-btn>
-            <v-btn text v-on:click="setToolSize(10)">10</v-btn>
-            <v-btn text v-on:click="setToolSize(20)">20</v-btn>
-          </v-btn-toggle>
-
-          <p>Mode</p>
-          <v-btn-toggle class="my-1">
-            <v-btn v-on:click="setTool('activate')">
-            <v-icon>mdi-eraser</v-icon>
-            </v-btn>
-            <v-btn v-on:click="setTool('deactivate')">
-            <v-icon>mdi-brush</v-icon>
-            </v-btn>
-          </v-btn-toggle>
-          <!-- </v-row> -->
-        </v-col>
-
-        <v-col>
-          <!--canvas for brain image-->
-          <div class="canvas">
-            <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-          </div>
-          <!--canvas for activation map-->
-          <div class="canvas">
-            <canvas ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-          </div>
-          <div class="canvas">
-            <canvas ref="cursor" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-          </div>
-          <!--canvas for corrections-->
-          <div id="draw">
-            <canvas
-              ref="draw"
-              v-bind:width="canvas_width"
-              v-bind:height="canvas_height"
-              v-on:mousemove="correctActivation"
-            ></canvas>
-          </div>
-        </v-col>
-
-        <v-col>
-          <!-- <div class="thumbnail_image" v-for="image in images" v-bind:key="image.id">
-            <img
-              :src="require(`../assets/${image.path}.jpeg`)"
-              weight="100"
-              height="100"
-              v-on:click="loadImage(image)"
-            />
-          </div>-->
-        </v-col>
-      </v-row>
-      <!-- </div> -->
-
-      <v-row alight="center" justify="center">
-        <v-sheet light elevation="12" max-width="500" class="ma-8">
-          <v-slide-group show-arrows>
-            <v-slide-item class="ma-4" v-for="image in images" :key="image.id">
-              <v-card width="100">
-                <v-img
-                  contain
-                  :src="require(`../assets/${image.path}.jpeg`)"
-                  weight="100"
-                  height="100"
-                  v-on:click="loadImage(image)"
-                />
+        <v-sheet light elevation="12" max-width="900" class="ma-8">
+          <v-slide-group v-model="model" show-arrows center-active mandatory>
+            <v-slide-item
+              class="ma-4"
+              v-for="image in images"
+              :key="image.id"
+              v-slot:default="{ active, toggle }"
+            >
+              <v-card
+                :color="active ? 'primary' : 'white'"
+                width="125"
+                height="125"
+                @click="toggle"
+              >
+                <v-row class="fill-height" align="center" justify="center">
+                  <v-img
+                    contain
+                    :src="require(`../assets/${image.path}.jpeg`)"
+                    weight="100"
+                    height="100"
+                    v-on:click="loadImage(image)"
+                  />
+                </v-row>
               </v-card>
             </v-slide-item>
           </v-slide-group>
         </v-sheet>
       </v-row>
 
-      <v-dialog v-model="loading" persistent>
-        <v-card color="primary">
-          <v-card-text>
+      <!-- Submission dialog -->
+      <v-dialog v-model="dialog" persistent max-width="1000">
+        <v-card>
+          <v-card-title class="headline">Submit activaion maps and retrain model?</v-card-title>
+          <v-card-text>Latest model: {{model_name}}</v-card-text>
+          <v-card-actions>
+            <v-btn color="red darken-1" text v-on:click="closeDialog">Cancel</v-btn>
+
+            <v-spacer></v-spacer>
+
+            <v-btn color="green darken-1" text v-on:click="onSubmit(true)">Train model from scratch</v-btn>
+            <v-btn color="green darken-1" text v-on:click="onSubmit(false)">Retrain model</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Loading dialog -->
+      <v-dialog v-model="loading" persistent width="800">
+        <v-card color="primary" dark>
+          <v-card-title>
             {{ loading_message }}
             <v-progress-linear indeterminate color="white"></v-progress-linear>
-          </v-card-text>
+          </v-card-title>
         </v-card>
       </v-dialog>
     </v-container>
@@ -117,15 +162,16 @@ export default {
         disease: "",
         path: ""
       },
-      image: [],
       images: [
         // {
-        //   id: "00001",
-        //   disease: "Stroke",
-        //   path: "Site6_031923___100"
+        //   image_id: string,
+        //   disease: string,
+        //   path: string
         // },
       ],
-      activationMap: {},
+      activation_maps: [
+        // {string (id): array(activation map)}
+      ],
       tool: "deactivate",
       tool_started: false,
       tool_size: 10,
@@ -139,18 +185,22 @@ export default {
         image_opacity: 1.0,
         map_opacity: 0.8
       },
+      dialog: false,
+      model_name: "",
       loading: false,
       check_number: 1,
       current_epoch: null,
+      total_epochs: null,
+      time_remaining: "",
       loading_message: "Initializing Training..."
     };
   },
   watch: {
     check_number: function() {
       if (this.loading) {
-        setTimeout(this.updateTrainingProgress, 10000)
+        setTimeout(this.updateTrainingProgress, 10000);
       } else {
-        return null
+        return null;
       }
     }
   },
@@ -167,25 +217,72 @@ export default {
         .get(path)
         .then(res => {
           this.images = res.data.images;
-          this.activationMap = res.data.activation_map;
+          this.model_name = res.data.latest_model;
+
+          for (let image_id in res.data.activation_maps) {
+            let activation_map = [];
+            // convert binary array to rgba array
+            for (
+              let row_index = 0;
+              row_index < this.canvas_height;
+              row_index++
+            ) {
+              for (
+                let col_index = 0;
+                col_index < this.canvas_width;
+                col_index++
+              ) {
+                if (
+                  res.data.activation_maps[image_id][row_index][col_index] === 1
+                ) {
+                  activation_map.push.apply(
+                    activation_map,
+                    this.graphics.activation_color
+                  );
+                } else {
+                  activation_map.push.apply(
+                    activation_map,
+                    this.graphics.inactivation_color
+                  );
+                }
+              }
+            }
+            console.log(activation_map);
+            this.activation_maps[image_id] = activation_map;
+          }
+
+          this.current_image.image_id = "";
+
           // load first image in images
           this.loadImage(this.images[0]);
+          console.log(this.images[0].image_id);
         })
         .catch(error => {
           console.error(error);
         });
     },
     loadImage: function(image) {
+      // store activation map of old image if not first time loading
+      if (this.current_image.image_id !== "") {
+        this.storeActivationMap();
+      }
+
+      // update current image to new image
       this.current_image = image;
+
+      // set image opacity
       let img_ctx = this.$refs.img.getContext("2d");
-      // set global opacity
       img_ctx.globalAlpha = this.graphics.image_opacity;
+
+      // load new image
       let img = new Image();
-      img.src = require(`../assets/${image.path}.jpeg`);
+      img.src = require(`../assets/${this.current_image.path}.jpeg`);
       img.onload = () => {
         img_ctx.drawImage(img, 0, 0, this.canvas_width, this.canvas_height);
       };
-      // find corresponding image id
+
+      // load new activation map
+      this.loadActivationMap();
     },
     loadCursor: function(x, y) {
       let ctx = this.$refs.cursor.getContext("2d");
@@ -196,28 +293,26 @@ export default {
       ctx.fill();
     },
     loadActivationMap: function() {
+      // load activation map for current_image
+
       let map_ctx = this.$refs.map.getContext("2d");
       map_ctx.globalAlpha = this.graphics.map_opacity;
       let map_data = map_ctx.createImageData(
         this.canvas_width,
         this.canvas_height
       );
-      for (let i = 0; i < map_data.height; i++) {
-        for (let k = 0; k < map_data.width; k++) {
-          let map_index = 4 * (map_data.width * i + k);
-          if (this.activationMap.activation[i][k] === 1) {
-            map_data.data[map_index] = this.graphics.activation_color[0];
-            map_data.data[map_index + 1] = this.graphics.activation_color[1];
-            map_data.data[map_index + 2] = this.graphics.activation_color[2];
-            map_data.data[map_index + 3] = this.graphics.activation_color[3];
-          } else {
-            map_data.data[map_index] = this.graphics.inactivation_color[0];
-            map_data.data[map_index + 1] = this.graphics.inactivation_color[1];
-            map_data.data[map_index + 2] = this.graphics.inactivation_color[2];
-            map_data.data[map_index + 3] = this.graphics.inactivation_color[3];
-          }
-        }
+
+      let current_activation_map = this.activation_maps[
+        this.current_image.image_id
+      ];
+      for (
+        let pixel_index = 0;
+        pixel_index < current_activation_map.length;
+        pixel_index++
+      ) {
+        map_data.data[pixel_index] = current_activation_map[pixel_index];
       }
+
       map_ctx.putImageData(map_data, 0, 0);
     },
     correctActivation: function(event) {
@@ -293,7 +388,6 @@ export default {
         pixel_color = this.graphics.inactivation_color;
       }
 
-      let updated_map_data = map_ctx.createImageData(map_data);
       for (let i = 0; i < correction_data.data.length; i += 4) {
         if (correction_data.data[i + 2] === 255) {
           map_data.data[i] = pixel_color[0];
@@ -306,9 +400,29 @@ export default {
       // draw updated activation map
       map_ctx.putImageData(map_data, 0, 0);
 
-      // clear draw
+      // clear drawings
       let clear_data = map_ctx.createImageData(map_data);
       draw_ctx.putImageData(clear_data, 0, 0);
+    },
+    storeActivationMap: function() {
+      // store activation map of current image
+
+      let map_ctx = this.$refs.map.getContext("2d");
+
+      let map_data = map_ctx.getImageData(
+        0,
+        0,
+        this.canvas_width,
+        this.canvas_height
+      );
+
+      this.activation_maps[this.current_image.image_id] = map_data.data;
+    },
+    openDialog: function() {
+      this.dialog = true;
+    },
+    closeDialog: function() {
+      this.dialog = false;
     },
     saveData: function(payload) {
       const path = "http://localhost:5000/active_learning";
@@ -326,28 +440,36 @@ export default {
 
       setTimeout(this.updateTrainingProgress, 10000);
     },
-    onSubmit: function(event) {
-      this.updateActivationMap();
-      let map_ctx = this.$refs.map.getContext("2d");
-      let corrected_map = map_ctx.getImageData(
-        0,
-        0,
-        this.canvas_width,
-        this.canvas_height
-      );
-      let corrected_activation = [];
-      for (let i = 0; i < corrected_map.data.length; i += 4) {
-        if (corrected_map.data[i] === 255) {
-          corrected_activation.push(1);
-        } else {
-          corrected_activation.push(0);
+    onSubmit: function(from_scratch) {
+      this.storeActivationMap();
+
+      // convert rgba array to binary array
+      let corrected_activation_maps = {};
+      for (let image_id in this.activation_maps) {
+        let map_array = [];
+        for (
+          let pixel_index = 0;
+          pixel_index < this.activation_maps[image_id].length;
+          pixel_index += 4
+        ) {
+          if (this.activation_maps[image_id][pixel_index] === 255) {
+            map_array.push(1);
+          } else {
+            map_array.push(0);
+          }
         }
+        corrected_activation_maps[image_id] = map_array;
       }
+
       const payload = {
-        image: this.current_image,
-        corrected_activation: corrected_activation
+        from_scratch: from_scratch,
+        activation_maps: corrected_activation_maps
       };
+
       this.saveData(payload);
+
+      this.dialog = false;
+
       this.loading = true;
     },
     updateTrainingProgress: function() {
@@ -356,9 +478,18 @@ export default {
         .get(path)
         .then(res => {
           this.current_epoch = res.data.current_epoch;
+          this.total_epochs = res.data.total_epochs;
+          this.time_remaining = res.data.time_remaining;
+
           console.log(this.current_epoch);
           this.loading_message =
-            "Current epoch:" + String(this.current_epoch) + "/10";
+            "Current epoch:" +
+            String(this.current_epoch) +
+            "/" +
+            String(this.total_epochs) +
+            " " +
+            "Estimated Time Remaining: " +
+            this.time_remaining;
           this.check_number = this.check_number + 1;
         })
         .catch(error => {
@@ -385,10 +516,5 @@ export default {
   position: relative;
   cursor: none;
   float: left;
-}
-#graphics {
-  position: relative;
-  float: left;
-  padding: 1em;
 }
 </style>
