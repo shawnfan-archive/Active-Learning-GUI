@@ -24,3 +24,5 @@ cd prototype
 npm install --save vue-router
 npm run serve
 ```
+
+Note that you will need to install npm to run the above. You can find find npm resources here: https://www.npmjs.com/get-npm
