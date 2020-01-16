@@ -13,6 +13,7 @@ pip install -U flask-cors
 
 Run the following to start the server
 ```python
+cd flask_unet
 python app.py
 ```
 
