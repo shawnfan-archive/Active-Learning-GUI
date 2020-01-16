@@ -8,7 +8,6 @@ First install dependencies for the server
 conda create -n flask_unet python=3.7
 conda activate flask_unet
 pip install -r requirements.txt 
-pip install -U flask-cors
 ```
 
 Run the following to start the server
