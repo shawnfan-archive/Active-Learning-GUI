@@ -25,4 +25,5 @@ npm install --save vue-router
 npm run serve
 ```
 
-Note that you will need to install npm to run the above. You can find find npm resources here: https://www.npmjs.com/get-npm
+Note that you will need to install npm and conda to run the above. You can find find resources here: https://www.npmjs.com/get-npm
+and https://www.anaconda.com/
