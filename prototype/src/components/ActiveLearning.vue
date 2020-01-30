@@ -24,102 +24,155 @@
       </v-row>
 
       <!-- User interface -->
-      <v-card class="mx-auto" max-width="900">
-        <v-container>
-          <v-row align="center" justify="center">
-            <v-col cols="auto">
-              <v-col>
-                <v-btn class="mx-2" fab dark color="cyan" v-on:click="setTool('activate')">
-                  <v-icon dark>mdi-pencil</v-icon>
-                </v-btn>
-              </v-col>
-
-              <v-col>
-                <v-btn class="mx-2" fab dark color="teal" v-on:click="setTool('deactivate')">
-                  <v-icon dark>mdi-eraser</v-icon>
-                </v-btn>
-              </v-col>
-
-              <v-col>
-                <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(20)">
-                  <v-icon size="25">mdi-checkbox-blank-circle</v-icon>
-                </v-btn>
-              </v-col>
-              <v-col>
-                <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(10)">
-                  <v-icon size="12.5">mdi-checkbox-blank-circle</v-icon>
-                </v-btn>
-              </v-col>
-              <v-col>
-                <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(5)">
-                  <v-icon size="7.5">mdi-checkbox-blank-circle</v-icon>
-                </v-btn>
-              </v-col>
-            </v-col>
-
-            <!-- Canvases -->
-            <v-col cols="auto">
-              <v-row align="center" justify="center">
-                <h2>Image ID: {{ current_image.image_id }}</h2>
-
-                <v-divider class="mx-4" vertical></v-divider>
-
-                <h2>Disease: {{ current_image.disease }}</h2>
-              </v-row>
-              <!--canvas for brain image-->
-              <div class="canvas">
-                <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-              </div>
-              <!--canvas for activation map-->
-              <div class="canvas">
-                <canvas ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-              </div>
-              <div class="canvas">
-                <canvas ref="cursor" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-              </div>
-              <!--canvas for corrections-->
-              <div id="draw">
-                <canvas
-                  ref="draw"
-                  v-bind:width="canvas_width"
-                  v-bind:height="canvas_height"
-                  v-on:mousemove="correctActivation"
-                ></canvas>
-              </div>
-            </v-col>
-          </v-row>
-        </v-container>
-      </v-card>
-
-      <!-- Image carousel -->
       <v-row align="center" justify="center">
-        <v-sheet light elevation="12" max-width="900" class="ma-8">
-          <v-slide-group v-model="model" show-arrows center-active mandatory>
-            <v-slide-item
-              class="ma-4"
-              v-for="image in images"
-              :key="image.id"
-              v-slot:default="{ active, toggle }"
-            >
-              <v-card
-                :color="active ? 'primary' : 'white'"
-                width="125"
-                height="125"
-                @click="toggle"
-              >
-                <v-row class="fill-height" align="center" justify="center">
-                  <v-img
-                    contain
-                    :src="require(`../assets/${image.path}.jpeg`)"
-                    weight="100"
-                    height="100"
-                    v-on:click="loadImage(image)"
-                  />
+        <v-col cols="8">
+          <v-container justify-center>
+            <v-card class="pa-auto">
+              <v-container>
+                <v-row align="center" justify="center">
+                  <!-- Buttons -->
+                  <v-col cols="auto">
+                    <!-- Paintbrush -->
+                    <v-col>
+                      <v-menu top offset-y>
+                        <template v-slot:activator="{ on }">
+                          <v-btn class="mx-2" fab dark color="red" v-on="on">
+                            <v-icon dark>mdi-pencil</v-icon>
+                          </v-btn>
+                        </template>
+
+                        <v-list rounded nav>
+                          <v-list-item v-on:click="setTool('activate')">
+                            <v-btn class="mx-1" fab dark color="orange" v-on:click="setToolSize(20)">
+                              <v-icon size="25">mdi-checkbox-blank-circle</v-icon>
+                            </v-btn>
+                          </v-list-item>
+
+                          <v-list-item v-on:click="setTool('activate')">
+                            <v-btn class="mx-1" fab dark color="orange" v-on:click="setToolSize(10)">
+                              <v-icon size="12.5">mdi-checkbox-blank-circle</v-icon>
+                            </v-btn>
+                          </v-list-item>
+
+                          <v-list-item v-on:click="setTool('activate')">
+                            <v-btn class="mx-1" fab dark color="orange" v-on:click="setToolSize(5)">
+                              <v-icon size="7.5">mdi-checkbox-blank-circle</v-icon>
+                            </v-btn>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
+                    </v-col>
+
+                    <!-- Eraser -->
+                    <v-col>
+                      <v-menu bottom offset-y>
+                        <template v-slot:activator="{ on }">
+                          <v-btn class="mx-2" fab dark color="cyan" v-on="on">
+                            <v-icon dark>mdi-eraser</v-icon>
+                          </v-btn>
+                        </template>
+
+                        <v-list rounded nav>
+                          <v-list-item v-on:click="setTool('deactivate')">
+                            <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(20)">
+                              <v-icon size="25">mdi-checkbox-blank-circle</v-icon>
+                            </v-btn>
+                          </v-list-item>
+
+                          <v-list-item v-on:click="setTool('deactivate')">
+                            <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(10)">
+                              <v-icon size="12.5">mdi-checkbox-blank-circle</v-icon>
+                            </v-btn>
+                          </v-list-item>
+
+                          <v-list-item v-on:click="setTool('deactivate')">
+                            <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(5)">
+                              <v-icon size="7.5">mdi-checkbox-blank-circle</v-icon>
+                            </v-btn>
+                          </v-list-item>
+                        </v-list>
+                      </v-menu>
+                    </v-col>
+
+                  </v-col>
+
+                  <!-- Canvases -->
+                  <v-col cols="auto">
+                    <v-row align="center" justify="center">
+                      <h2>Image ID: {{ current_image.image_id }}</h2>
+
+                      <v-divider class="mx-4" vertical></v-divider>
+
+                      <h2>Disease: {{ current_image.disease }}</h2>
+                    </v-row>
+
+                    <v-row>
+                      <div class="canvas">
+                        <v-skeleton-loader
+                          v-if="skeleton_loader"
+                          boilerplate="false"
+                          :height="canvas_height"
+                          :width="canvas_width"
+                          type="image"
+                        ></v-skeleton-loader>
+                      </div>
+
+                      <!--canvas for brain image-->
+                      <div class="canvas">
+                        <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+                      </div>
+                      <!--canvas for activation map-->
+                      <div class="canvas">
+                        <canvas ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+                      </div>
+                      <div class="canvas">
+                        <canvas
+                          ref="cursor"
+                          v-bind:width="canvas_width"
+                          v-bind:height="canvas_height"
+                        ></canvas>
+                      </div>
+                      <!--canvas for corrections-->
+                      <div id="draw">
+                        <canvas
+                          ref="draw"
+                          v-bind:width="canvas_width"
+                          v-bind:height="canvas_height"
+                          v-on:mousemove="correctActivation"
+                        ></canvas>
+                      </div>
+                    </v-row>
+                  </v-col>
                 </v-row>
-              </v-card>
-            </v-slide-item>
-          </v-slide-group>
-        </v-sheet>
+              </v-container>
+            </v-card>
+          </v-container>
+          <!-- </v-row> -->
+        </v-col>
+
+        <v-col cols="2">
+          <v-row justify="center">
+            <v-card>
+              <v-list class="overflow-y-auto" max-height="600">
+                <v-list-item-group>
+                  <v-list-item class="ma-4" v-for="image in images" :key="image.id">
+                    <v-card class="pa-2" width="100" height="105" raised>
+                      <v-img
+                        class="my-0"
+                        contain
+                        :src="require(`../assets/${image.path}.jpeg`)"
+                        weight="75"
+                        height="75"
+                        v-on:click="loadImage(image)"
+                      ></v-img>
+                      <v-card-subtitle class="pa-0">{{image.image_id}}</v-card-subtitle>
+                    </v-card>
+                  </v-list-item>
+                </v-list-item-group>
+              </v-list>
+            </v-card>
+          </v-row>
+        </v-col>
       </v-row>
 
       <!-- Submission dialog -->
@@ -175,8 +228,8 @@ export default {
       tool: "deactivate",
       tool_started: false,
       tool_size: 10,
-      canvas_width: 436,
-      canvas_height: 364,
+      canvas_width: 600,
+      canvas_height: 500,
       graphics: {
         // rgba
         activation_color: [255, 0, 0, 100],
@@ -185,6 +238,8 @@ export default {
         image_opacity: 1.0,
         map_opacity: 0.8
       },
+      skeleton_loader: true,
+      skeleton_thumbnail: [1, 2, 3, 4, 5],
       dialog: false,
       model_name: "",
       loading: false,
@@ -198,6 +253,7 @@ export default {
   watch: {
     check_number: function() {
       if (this.loading) {
+        // check training progress every 10 seconds
         setTimeout(this.updateTrainingProgress, 10000);
       } else {
         return null;
@@ -247,15 +303,15 @@ export default {
                 }
               }
             }
-            console.log(activation_map);
             this.activation_maps[image_id] = activation_map;
           }
+
+          this.skeleton_loader = false;
 
           this.current_image.image_id = "";
 
           // load first image in images
           this.loadImage(this.images[0]);
-          console.log(this.images[0].image_id);
         })
         .catch(error => {
           console.error(error);
@@ -429,7 +485,6 @@ export default {
       axios
         .post(path, payload)
         .then(() => {
-          //alert("Progress saved!");
           this.loading = false;
           this.getActivationMap();
         })
@@ -442,7 +497,8 @@ export default {
     },
     onSubmit: function(from_scratch) {
       this.storeActivationMap();
-
+      this.loading_message = "Initializing Training..."; //Reset loading message
+      
       // convert rgba array to binary array
       let corrected_activation_maps = {};
       for (let image_id in this.activation_maps) {
@@ -483,7 +539,7 @@ export default {
 
           console.log(this.current_epoch);
           this.loading_message =
-            "Current epoch:" +
+            "Current Epoch:" +
             String(this.current_epoch) +
             "/" +
             String(this.total_epochs) +

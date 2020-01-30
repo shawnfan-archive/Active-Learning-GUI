@@ -15,19 +15,24 @@ from unet.model import *
 from unet.data import *
 import keras
 import time
+import sqlite3
+
+from tensorflow.python.keras.backend import set_session
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 #GUI canvas dimensions
-canvas_width = 436
-canvas_height = 364
+canvas_width = 600
+canvas_height = 500
 
 images = []
-for image_id in range(100, 106):
+
+for slice_id in range(100, 106):
+
     images.append({
-        "image_id": str(image_id),
+        "image_id": str(slice_id - 99),
         "disease": "Stroke",
-        "path": "Site6_031923___" + str(image_id)
+        "path": "Site6_031923___" + str(slice_id)
     })
 
 activation_maps = {
@@ -80,13 +85,7 @@ def loadActivationMap(filename):
 def findLatestOutput():
 
     files = os.listdir('output')
-    files.remove('ex.ipynb')
-    files.remove('ground_truth.png')
-    files.remove('input.png')
-    files.remove('resized_input.png')
     files.remove('.DS_Store')
-
-    print(files)
 
     files.sort(key=lambda file: datetime.strptime(file, '%Y_%m_%d_%H_%M'))
 
@@ -104,14 +103,6 @@ def findLatestModel():
     return latest_model
 
 
-# load nifti
-img = nib.load('data/031923_t1w_deface_stx.nii.gz')
-data = np.array(img.dataobj)
-image_data = (data[:, :, 106])
-
-io.imsave(("data/new_image.png"), image_data)
-
-
 def getPrediction():
     #URL with the predict method
     url = 'http://localhost:5000/getPrediction'
@@ -124,7 +115,7 @@ def getPrediction():
 
     for image_id in activation_maps:
 
-        image_data = (data[:, :, int(image_id)])
+        image_data = (data[:, :, int(image_id)+ 99])
         image_data = resize(image_data, (256, 256),
                             mode='reflect',
                             preserve_range=True,
@@ -144,6 +135,9 @@ def getPrediction():
 
 
 def updateTrainingData(corrected_activation_maps):
+
+    conn = sqlite3.connect("database/active_learning_20191210.db")
+    cur = conn.cursor()
 
     for image_id, activation_map in corrected_activation_maps.items():
 
@@ -165,26 +159,51 @@ def updateTrainingData(corrected_activation_maps):
         cur_date = str(now.year) + '_' + str(now.month) + '_' + str(
             now.day) + '_' + str(now.hour) + '_' + str(now.minute)
 
-        # save corrected activation map
-        io.imsave('data/train/label/' + cur_date + '_' + image_id + '.jpeg',
-                  mapNumPy)
+        # update map_log
+        # file path for activation map
+        map_path = 'data/train/label/' + cur_date + '_' + image_id + '.png'
+        is_manual = True
+        map_entry = (map_path, cur_date, is_manual)
+
+        cur.execute(
+            " INSERT INTO map_log (file_path, time_created, is_manual) VALUES"
+            + str(map_entry))
+        
+        map_id = cur.lastrowid
+
+        # save image of corrected activation map
+        io.imsave(map_path, mapNumPy)
+
+        image_to_map_entry = (image_id, map_id)
+
+        # update image_to_map log
+        cur.execute(" INSERT INTO image_to_map_log (image_id, map_id) VALUES" + str(image_to_map_entry))
 
         # load nifti
         img = nib.load('data/031923_t1w_deface_stx.nii.gz')
         data = np.array(img.dataobj)
-        data = (data[:, :, int(image_id)])
+        data = (data[:, :, int(image_id) + 99])
         data = resize(data, (256, 256),
                       mode='reflect',
                       preserve_range=True,
                       order=3)
+
+        # file path for image
+        image_path = 'data/train/image/' + cur_date + '_' + image_id + '.png'
+
         # save corresponding image to each corrected activation map
-        io.imsave('data/train/image/' + cur_date + '_' + image_id + '.jpeg',
-                  data / 100)
+        io.imsave(image_path, data / 100)
+
+
+    conn.commit()
+    conn.close()
 
     return None
 
 
 def retrain(from_scratch):
+
+    graph = tf.get_default_graph()
 
     if from_scratch:
         #URL with the predict method
@@ -201,13 +220,43 @@ def retrain(from_scratch):
 
     #Send a post request
     r = requests.post(url, data=j_data, headers=headers)
+    print(r.text)
 
     #Retrieve output and save/update model tracking csv
-    print(json.loads(r.text))
+    decoded_model_info = json.loads(r.text)
+    decoded_model_info = decoded_model_info[0]
+    print(decoded_model_info)
     model_tracking = pd.read_csv('models/model_tracking.csv')
     model_tracking = model_tracking.append(json.loads(r.text))
     model_tracking.to_csv('models/model_tracking.csv', index=False)
     print('Model Data Saved!')
+
+    #Update training log in database
+    model_path = 'models/' + decoded_model_info['model_name']
+    training_entry = (decoded_model_info['date'], model_path, from_scratch)
+
+    conn = sqlite3.connect("database/active_learning_20191210.db")
+
+    cur = conn.cursor()
+
+    cur.execute(
+        " INSERT INTO training_log (training_time, file_path, from_scratch) VALUES"
+        + str(training_entry))
+
+    training_id = cur.lastrowid
+
+    #Update train-to-image log in database
+    df = pd.read_sql_query(" SELECT * from image_log", conn)
+
+    image_ids = df['image_id'].tolist()
+
+    for image_id in image_ids:
+
+        train_to_image_entry = (image_id, training_id)
+        cur.execute(" INSERT INTO train_to_image_log (image_id, training_id) VALUES" + str(train_to_image_entry))
+
+    conn.commit()
+    conn.close()
 
     return None
 
@@ -224,6 +273,8 @@ model = unet()
 
 #This is needed to ensure you are using the correct tensor graph
 graph = tf.get_default_graph()
+#This is needed to ensure that you can retrain the model more than once
+sess = tf.Session()
 
 
 # sanity check route
@@ -246,22 +297,6 @@ def active_learning():
         updateTrainingData(corrected_activation_maps)
 
         retrain(from_scratch)
-
-        # # add unseen images
-        # images.append({
-        #     "image_id": str(106),
-        #     "disease": "Stroke",
-        #     "path": "Site6_031923___" + str(106)
-        # })
-
-        # images.append({
-        #     "image_id": str(120),
-        #     "disease": "Stroke",
-        #     "path": "Site6_031923___" + str(120)
-        # })
-
-        # activation_maps["106"] = None
-        # activation_maps["120"] = None
 
         getPrediction()
 
@@ -292,7 +327,9 @@ def active_learning():
 def makecalc():
 
     global graph
+    global sess
     with graph.as_default():
+        set_session(sess)
 
         #Current time
         now = datetime.now()
@@ -310,6 +347,9 @@ def makecalc():
         #Retrieve request
         data = request.get_json()
 
+        conn = sqlite3.connect("database/active_learning_20191210.db")
+        cur = conn.cursor()
+
         for image_id in activation_maps:
 
             #Predict on data and save image
@@ -325,14 +365,30 @@ def makecalc():
             #Save as numpy arrays
             np.save('output/' + cur_date + '/' + image_id + '_input.npy',
                     np.array(data))
-            np.save('output/' + cur_date + '/' + image_id + '_prediction.npy',
-                    np.array(pred))
+
+            map_path = 'output/' + cur_date + '/' + image_id + '_prediction.npy'
+            np.save(map_path, np.array(pred)) 
+
+            is_manual = False
+
+            map_entry = (map_path, cur_date, is_manual)
+
+            cur.execute(" INSERT INTO map_log (file_path, time_created, is_manual) VALUES" + str(map_entry))
+
+            map_id = cur.lastrowid
+
+            image_to_map_entry = (image_id, map_id) 
+
+            cur.execute(" INSERT INTO image_to_map_log (image_id, map_id) VALUES" + str(image_to_map_entry))                   
+
+        conn.commit()
+        conn.close()
 
         #Return result
         return 'New predictions uploaded!'
 
 
-total_epochs = 10
+total_epochs = 1
 
 
 #Callback that will keep track of training times
@@ -384,7 +440,9 @@ class TimeHistory(keras.callbacks.Callback):
 def retrain_model():
 
     global graph
+    global sess
     with graph.as_default():
+        set_session(sess)
 
         #Load in latest iteration of model
         df = pd.read_csv('models/model_tracking.csv', parse_dates=['date'])
@@ -433,6 +491,10 @@ def retrain_model():
             'from_scratch': False
         }]
 
+        #Reinitialize current epoch and estimated time remaining
+        TimeHistory.current_epoch = 0
+        TimeHistory.time_remaining = "Calculating..."
+
         #Return result
         return jsonify(data)
 
@@ -443,7 +505,9 @@ def retrain_model():
 def train_from_scratch():
 
     global graph
+    global sess
     with graph.as_default():
+        set_session(sess)
 
         #Re-train parameters
         data_gen_args = dict(rotation_range=0.2,
@@ -476,7 +540,7 @@ def train_from_scratch():
         #Train model
         model.fit_generator(myGene,
                             steps_per_epoch=1,
-                            epochs=10,
+                            epochs=1,
                             callbacks=[model_checkpoint, time_callback])
 
         #Data that we will send back
@@ -485,6 +549,10 @@ def train_from_scratch():
             'model_name': 'unet_stroke_' + cur_date + '_init.hdf5',
             'from_scratch': True
         }]
+
+        #Reinitialize current epoch and estimated time remaining
+        TimeHistory.current_epoch = 0
+        TimeHistory.time_remaining = "Calculating..."
 
         #Return result
         return jsonify(data)
