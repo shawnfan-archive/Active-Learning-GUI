@@ -42,23 +42,12 @@
                         </template>
 
                         <v-list rounded nav>
-                          <v-list-item v-on:click="setTool('activate')">
-                            <v-btn class="mx-1" fab dark color="orange" v-on:click="setToolSize(20)">
-                              <v-icon size="25">mdi-checkbox-blank-circle</v-icon>
+                          <v-list-item v-for="parameter in button_parameters" :key="parameter[0]">
+                            <v-btn class="mx-1" fab dark color="orange" v-on:click="setTool('activate',parameter[0])">
+                              <v-icon :size="parameter[1]">mdi-checkbox-blank-circle</v-icon>
                             </v-btn>
                           </v-list-item>
 
-                          <v-list-item v-on:click="setTool('activate')">
-                            <v-btn class="mx-1" fab dark color="orange" v-on:click="setToolSize(10)">
-                              <v-icon size="12.5">mdi-checkbox-blank-circle</v-icon>
-                            </v-btn>
-                          </v-list-item>
-
-                          <v-list-item v-on:click="setTool('activate')">
-                            <v-btn class="mx-1" fab dark color="orange" v-on:click="setToolSize(5)">
-                              <v-icon size="7.5">mdi-checkbox-blank-circle</v-icon>
-                            </v-btn>
-                          </v-list-item>
                         </v-list>
                       </v-menu>
                     </v-col>
@@ -73,21 +62,9 @@
                         </template>
 
                         <v-list rounded nav>
-                          <v-list-item v-on:click="setTool('deactivate')">
-                            <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(20)">
-                              <v-icon size="25">mdi-checkbox-blank-circle</v-icon>
-                            </v-btn>
-                          </v-list-item>
-
-                          <v-list-item v-on:click="setTool('deactivate')">
-                            <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(10)">
-                              <v-icon size="12.5">mdi-checkbox-blank-circle</v-icon>
-                            </v-btn>
-                          </v-list-item>
-
-                          <v-list-item v-on:click="setTool('deactivate')">
-                            <v-btn class="mx-1" fab dark color="blue" v-on:click="setToolSize(5)">
-                              <v-icon size="7.5">mdi-checkbox-blank-circle</v-icon>
+                          <v-list-item v-for="parameter in button_parameters" :key="parameter[0]">
+                            <v-btn class="mx-1" fab dark color="blue" v-on:click="setTool('deactivate',parameter[0])">
+                              <v-icon :size="parameter[1]">mdi-checkbox-blank-circle</v-icon>
                             </v-btn>
                           </v-list-item>
                         </v-list>
@@ -110,7 +87,6 @@
                       <div class="canvas">
                         <v-skeleton-loader
                           v-if="skeleton_loader"
-                          boilerplate="false"
                           :height="canvas_height"
                           :width="canvas_width"
                           type="image"
@@ -150,6 +126,7 @@
           <!-- </v-row> -->
         </v-col>
 
+        <!-- Thumbnail list -->
         <v-col cols="2">
           <v-row justify="center">
             <v-card>
@@ -228,6 +205,7 @@ export default {
       tool: "deactivate",
       tool_started: false,
       tool_size: 10,
+      button_parameters: [[20, 25], [10, 12.5], [5, 7.5]], 
       canvas_width: 600,
       canvas_height: 500,
       graphics: {
@@ -261,10 +239,8 @@ export default {
     }
   },
   methods: {
-    setTool: function(tool) {
+    setTool: function(tool, tool_size) {
       this.tool = tool;
-    },
-    setToolSize: function(tool_size) {
       this.tool_size = tool_size;
     },
     getActivationMap: function() {

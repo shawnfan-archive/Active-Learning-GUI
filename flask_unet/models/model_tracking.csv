@@ -13,3 +13,4 @@ date,from_scratch,model_name
 "Thu, 30 Jan 2020 13:34:46 GMT",False,unet_stroke_2020_1_30_13_34.hdf5
 "Thu, 30 Jan 2020 13:42:34 GMT",True,unet_stroke_2020_1_30_13_42_init.hdf5
 "Thu, 30 Jan 2020 13:43:32 GMT",False,unet_stroke_2020_1_30_13_43.hdf5
+"Thu, 30 Jan 2020 14:21:47 GMT",True,unet_stroke_2020_1_30_14_21_init.hdf5
