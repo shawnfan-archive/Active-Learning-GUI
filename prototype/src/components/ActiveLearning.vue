@@ -3,7 +3,7 @@
     <v-container align-center justify-center>
       <!-- Toolbar -->
       <v-row>
-        <v-toolbar dense prominent class="my-8">
+        <v-toolbar dense class="my-2">
           <v-app-bar-nav-icon></v-app-bar-nav-icon>
 
           <v-toolbar-title>An Active Learning Approach to Acute Stroke Detection</v-toolbar-title>
@@ -11,7 +11,7 @@
           <v-spacer></v-spacer>
 
           <v-toolbar-items>
-            <v-btn text v-on:click="openDialog">
+            <v-btn text v-on:click="toggleSubmissionDialog">
               Save and Retrain Model
               <v-icon>mdi-upload</v-icon>
             </v-btn>
@@ -31,50 +31,79 @@
               <v-container>
                 <v-row align="center" justify="center">
                   <!-- Buttons -->
-                  <v-col cols="auto">
+                  <v-col cols="2">
+                    <!-- Show map -->
+                    <!-- <v-col>
+                      <v-switch class="mx-4" inset color="indigo" v-model="show_map"></v-switch>
+                    </v-col>-->
+
+                    <!-- Undo -->
+                    <v-col>
+                      <v-btn class="ma-4" fab dark color="purple">
+                        <v-icon dark>mdi-undo</v-icon>
+                      </v-btn>
+                    </v-col>
+
                     <!-- Paintbrush -->
                     <v-col>
-                      <v-menu top offset-y>
+                      <v-menu left offset-y>
                         <template v-slot:activator="{ on }">
-                          <v-btn class="mx-2" fab dark color="red" v-on="on">
+                          <v-btn class="ma-4" fab dark color="red" v-on="on">
                             <v-icon dark>mdi-pencil</v-icon>
                           </v-btn>
                         </template>
 
-                        <v-list rounded nav>
-                          <v-list-item v-for="parameter in button_parameters" :key="parameter[0]">
-                            <v-btn class="mx-1" fab dark color="orange" v-on:click="setTool('activate',parameter[0])">
+                        <v-col>
+                          <v-btn-toggle>
+                            <v-btn
+                              v-for="parameter in button_parameters"
+                              :key="parameter[0]"
+                              fab
+                              color="orange"
+                              v-on:click="setTool('activate',parameter[0])"
+                            >
                               <v-icon :size="parameter[1]">mdi-checkbox-blank-circle</v-icon>
                             </v-btn>
-                          </v-list-item>
-
-                        </v-list>
+                          </v-btn-toggle>
+                        </v-col>
                       </v-menu>
                     </v-col>
 
                     <!-- Eraser -->
                     <v-col>
-                      <v-menu bottom offset-y>
+                      <v-menu left offset-y>
                         <template v-slot:activator="{ on }">
-                          <v-btn class="mx-2" fab dark color="cyan" v-on="on">
+                          <v-btn class="ma-4" fab dark color="cyan" v-on="on">
                             <v-icon dark>mdi-eraser</v-icon>
                           </v-btn>
                         </template>
 
-                        <v-list rounded nav>
-                          <v-list-item v-for="parameter in button_parameters" :key="parameter[0]">
-                            <v-btn class="mx-1" fab dark color="blue" v-on:click="setTool('deactivate',parameter[0])">
+                        <v-col>
+                          <v-btn-toggle>
+                            <v-btn
+                              v-for="parameter in button_parameters"
+                              :key="parameter[0]"
+                              fab
+                              color="blue"
+                              v-on:click="setTool('deactivate',parameter[0])"
+                            >
                               <v-icon :size="parameter[1]">mdi-checkbox-blank-circle</v-icon>
                             </v-btn>
-                          </v-list-item>
-                        </v-list>
+                          </v-btn-toggle>
+                        </v-col>
+
+                        <v-col justify="center">
+                          <v-btn text v-on:click="clearActivationMap()">
+                            Clear All
+                            <v-icon>mdi-close</v-icon>
+                          </v-btn>
+                        </v-col>
                       </v-menu>
                     </v-col>
-
                   </v-col>
 
                   <!-- Canvases -->
-                  <v-col cols="auto">
+                  <v-col cols="10">
                     <v-row align="center" justify="center">
                       <h2>Image ID: {{ current_image.image_id }}</h2>
 
@@ -83,24 +112,18 @@
                       <h2>Disease: {{ current_image.disease }}</h2>
                     </v-row>
 
-                    <v-row>
-                      <div class="canvas">
-                        <v-skeleton-loader
-                          v-if="skeleton_loader"
-                          :height="canvas_height"
-                          :width="canvas_width"
-                          type="image"
-                        ></v-skeleton-loader>
-                      </div>
+                    <ContentLoader class="can" v-if="skeleton_loader" :width="600" :height="500"></ContentLoader>
 
-                      <!--canvas for brain image-->
+                    <!--canvas for brain image-->
+                    <div v-else>
                       <div class="canvas">
-                        <canvas ref="img" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
+                        <canvas
+                          ref="image"
+                          v-bind:width="canvas_width"
+                          v-bind:height="canvas_height"
+                        ></canvas>
                       </div>
-                      <!--canvas for activation map-->
-                      <div class="canvas">
-                        <canvas ref="map" v-bind:width="canvas_width" v-bind:height="canvas_height"></canvas>
-                      </div>
+                      <!-- canvas for cursor -->
                       <div class="canvas">
                         <canvas
                           ref="cursor"
@@ -108,7 +131,7 @@
                           v-bind:height="canvas_height"
                         ></canvas>
                       </div>
-                      <!--canvas for corrections-->
+                      <!--canvas for activation map-->
                       <div id="draw">
                         <canvas
                           ref="draw"
@@ -117,10 +140,39 @@
                           v-on:mousemove="correctActivation"
                         ></canvas>
                       </div>
-                    </v-row>
+                    </div>
                   </v-col>
                 </v-row>
               </v-container>
+            </v-card>
+
+            <!-- Histogram -->
+            <v-card class="ma-2" min-height="150">
+              <v-row>
+                <v-col cols="3">
+                  <v-row align="center">
+                    <v-slider v-model="contrast" prepend-icon="mdi-contrast-circle" min="0" max="300"></v-slider>
+                  </v-row>
+                  <!-- <v-row justify="center">
+                  <v-icon>mdi-contrast-circle</v-icon>
+                  </v-row> -->
+                </v-col>
+                <v-col cols="9">
+                  <v-sheet class="ma-1" elevation color="transparent" max-height="75">
+                    <v-text>Histogram</v-text>
+                    <v-sparkline
+                      :key="histogram_key"
+                      :value="histogram"
+                      height="50"
+                      fill
+                      auto-draw
+                      smooth
+                      color='#42b3f4'
+                      padding="1"
+                    ></v-sparkline>
+                  </v-sheet>
+                </v-col>
+              </v-row>
             </v-card>
           </v-container>
           <!-- </v-row> -->
@@ -137,7 +189,7 @@
                       <v-img
                         class="my-0"
                         contain
-                        :src="require(`../assets/${image.path}.jpeg`)"
+                        :src="require(`../assets/${image.path}`)"
                         weight="75"
                         height="75"
                         v-on:click="loadImage(image)"
@@ -158,7 +210,7 @@
           <v-card-title class="headline">Submit activaion maps and retrain model?</v-card-title>
           <v-card-text>Latest model: {{model_name}}</v-card-text>
           <v-card-actions>
-            <v-btn color="red darken-1" text v-on:click="closeDialog">Cancel</v-btn>
+            <v-btn color="red darken-1" text v-on:click="toggleSubmissionDialog">Cancel</v-btn>
 
             <v-spacer></v-spacer>
 
@@ -183,8 +235,12 @@
 
 <script>
 import axios from "axios";
+import { ContentLoader } from "vue-content-loader";
 
 export default {
+  components: {
+    ContentLoader
+  },
   data() {
     return {
       current_image: {
@@ -192,6 +248,7 @@ export default {
         disease: "",
         path: ""
       },
+      current_image_data: [],
       images: [
         // {
         //   image_id: string,
@@ -205,27 +262,35 @@ export default {
       tool: "deactivate",
       tool_started: false,
       tool_size: 10,
-      button_parameters: [[20, 25], [10, 12.5], [5, 7.5]], 
+      show_map: false,
+      button_parameters: [
+        [20, 25],
+        [10, 12.5],
+        [5, 7.5]
+      ],
       canvas_width: 600,
       canvas_height: 500,
       graphics: {
-        // rgba
-        activation_color: [255, 0, 0, 100],
-        inactivation_color: [0, 0, 0, 0],
-        paintbrush: "rgba(0, 0, 255, 255)",
-        image_opacity: 1.0,
+        paintbrush: "rgb(254, 0, 0)",
         map_opacity: 0.8
+      },
+      paint: {
+        points: [],
+        tool: ""
       },
       skeleton_loader: true,
       skeleton_thumbnail: [1, 2, 3, 4, 5],
       dialog: false,
       model_name: "",
       loading: false,
+      contrast: 100,
       check_number: 1,
       current_epoch: null,
       total_epochs: null,
       time_remaining: "",
-      loading_message: "Initializing Training..."
+      loading_message: "Initializing Training...",
+      histogram: new Array(256).fill(0),
+      histogram_key: 0
     };
   },
   watch: {
@@ -236,6 +301,22 @@ export default {
       } else {
         return null;
       }
+    },
+    contrast: function() {
+      let ctx = this.$refs.image.getContext("2d");
+      let img = ctx.getImageData(0, 0, this.canvas_width, this.canvas_height);
+
+      let factor = this.contrast / 100;
+
+      for (let i = 0; i < this.current_image_data.length; i += 4) {
+        img.data[i + 0] = (this.current_image_data[i + 0] - 127) * factor + 127;
+        img.data[i + 1] = (this.current_image_data[i + 1] - 127) * factor + 127;
+        img.data[i + 2] = (this.current_image_data[i + 2] - 127) * factor + 127;
+      }
+
+      ctx.putImageData(img, 0, 0);
+
+      this.loadHistogram();
     }
   },
   methods: {
@@ -244,203 +325,194 @@ export default {
       this.tool_size = tool_size;
     },
     getActivationMap: function() {
-      const path = "http://localhost:5000/active_learning";
-      axios
-        .get(path)
+      //return promise
+      return axios
+        .get("http://localhost:5000/active_learning")
         .then(res => {
           this.images = res.data.images;
           this.model_name = res.data.latest_model;
+          this.activation_maps = res.data.activation_maps;
 
-          for (let image_id in res.data.activation_maps) {
-            let activation_map = [];
-            // convert binary array to rgba array
-            for (
-              let row_index = 0;
-              row_index < this.canvas_height;
-              row_index++
-            ) {
-              for (
-                let col_index = 0;
-                col_index < this.canvas_width;
-                col_index++
-              ) {
-                if (
-                  res.data.activation_maps[image_id][row_index][col_index] === 1
-                ) {
-                  activation_map.push.apply(
-                    activation_map,
-                    this.graphics.activation_color
-                  );
-                } else {
-                  activation_map.push.apply(
-                    activation_map,
-                    this.graphics.inactivation_color
-                  );
-                }
-              }
-            }
-            this.activation_maps[image_id] = activation_map;
-          }
-
+          this.current_image = this.images[0];
           this.skeleton_loader = false;
-
-          this.current_image.image_id = "";
-
-          // load first image in images
-          this.loadImage(this.images[0]);
         })
         .catch(error => {
           console.error(error);
         });
     },
     loadImage: function(image) {
-      // store activation map of old image if not first time loading
-      if (this.current_image.image_id !== "") {
-        this.storeActivationMap();
+      //Store current activation map
+      this.storeActivationMap();
+
+      //Update current image to new image
+      this.current_image = image;
+      //Load activation map of new image
+      this.loadActivationMap();
+      //Load new image onto canvas
+      let ctx = this.$refs.image.getContext("2d");
+      this.contrast = 100;
+
+      function loadCanvasImage(src) {
+        return new Promise(resolve => {
+          let canvas_img = new Image();
+          canvas_img.src = require(`../assets/${src}`);
+          canvas_img.onload = function() {
+            ctx.drawImage(canvas_img, 0, 0);
+            resolve(canvas_img);
+          };
+        });
       }
 
-      // update current image to new image
-      this.current_image = image;
+      loadCanvasImage(this.current_image.path).then(canvas_img => {
+        let canvas_img_data = ctx.getImageData(
+          0,
+          0,
+          this.canvas_width,
+          this.canvas_height
+        );
+        this.current_image_data = canvas_img_data.data;
+        this.loadHistogram();
+      });
+    },
+    loadHistogram: function() {
+      this.histogram = new Array(256).fill(0);
 
-      // set image opacity
-      let img_ctx = this.$refs.img.getContext("2d");
-      img_ctx.globalAlpha = this.graphics.image_opacity;
-
-      // load new image
-      let img = new Image();
-      img.src = require(`../assets/${this.current_image.path}.jpeg`);
-      img.onload = () => {
-        img_ctx.drawImage(img, 0, 0, this.canvas_width, this.canvas_height);
-      };
-
-      // load new activation map
-      this.loadActivationMap();
+      let ctx = this.$refs.image.getContext("2d");
+      let canvas_img = ctx.getImageData(
+        0,
+        0,
+        this.canvas_width,
+        this.canvas_height
+      );
+      for (let i = 0; i < canvas_img.data.length; i += 4) {
+        this.histogram[canvas_img.data[i]] += 1;
+      }
+      //Use key change to rerender histogram
+      this.histogram_key += 1;
     },
     loadCursor: function(x, y) {
       let ctx = this.$refs.cursor.getContext("2d");
       ctx.clearRect(0, 0, this.canvas_width, this.canvas_height);
-      ctx.fillStyle = "rgba(255,255,255,255)";
+      ctx.fillStyle = this.graphics.paintbrush;
       ctx.beginPath();
       ctx.arc(x, y, this.tool_size / 2, 0, 2 * Math.PI);
       ctx.fill();
     },
     loadActivationMap: function() {
-      // load activation map for current_image
+      let canvas = this.$refs.draw;
+      let ctx = this.$refs.draw.getContext("2d");
+      ctx.strokeStyle = this.graphics.paintbrush;
+      ctx.fillStyle = this.graphics.paintbrush;
 
-      let map_ctx = this.$refs.map.getContext("2d");
-      map_ctx.globalAlpha = this.graphics.map_opacity;
-      let map_data = map_ctx.createImageData(
-        this.canvas_width,
-        this.canvas_height
-      );
+      //Clear current activation map
+      ctx.clearRect(0, 0, this.canvas_width, this.canvas_height);
+
+      ctx.globalCompositeOperation = "source-over";
 
       let current_activation_map = this.activation_maps[
         this.current_image.image_id
       ];
-      for (
-        let pixel_index = 0;
-        pixel_index < current_activation_map.length;
-        pixel_index++
-      ) {
-        map_data.data[pixel_index] = current_activation_map[pixel_index];
-      }
 
-      map_ctx.putImageData(map_data, 0, 0);
+      for (let row_index = 0; row_index < this.canvas_height; row_index++) {
+        for (
+          let column_index = 0;
+          column_index < this.canvas_width;
+          column_index++
+        ) {
+          if (current_activation_map[row_index][column_index] === 1) {
+            ctx.fillRect(column_index, row_index, 1, 1);
+          }
+        }
+      }
+    },
+    clearActivationMap: function() {
+      //Clear current activation map
+      let ctx = this.$refs.draw.getContext("2d");
+      ctx.clearRect(0, 0, this.canvas_width, this.canvas_height);
     },
     correctActivation: function(event) {
       // load cursor
       this.loadCursor(event.offsetX, event.offsetY);
 
-      // highlight incorrect activation
       let canvas = this.$refs.draw;
       let ctx = this.$refs.draw.getContext("2d");
+
+      //Set graphics parameters
       ctx.strokeStyle = this.graphics.paintbrush;
       ctx.fillStyle = this.graphics.paintbrush;
-      ctx.globalCompositeOperation = "source-over";
-      ctx.lineJoin = "round";
+      ctx.lineJoin = ctx.lineCap = "round";
       ctx.lineWidth = this.tool_size;
-      // start drawing
-      canvas.onmousedown = () => {
-        // draw circle
-        ctx.beginPath();
-        ctx.arc(
-          event.offsetX,
-          event.offsetY,
-          this.tool_size / 2,
-          0,
-          2 * Math.PI
-        );
-        ctx.fill();
-        this.updateActivationMap();
-        this.tool_started = true;
-        ctx.beginPath();
-        ctx.moveTo(event.offsetX, event.offsetY);
-      };
-      if (this.tool_started) {
-        ctx.lineTo(event.offsetX, event.offsetY);
-        ctx.stroke();
-        this.updateActivationMap();
-      }
-      canvas.onmouseup = () => {
-        // stop drawing
-        if (this.tool_started) {
-          this.tool_started = false;
-        }
-        // draw circle
-        ctx.beginPath();
-        ctx.arc(
-          event.offsetX,
-          event.offsetY,
-          this.tool_size / 2,
-          0,
-          2 * Math.PI
-        );
-        ctx.fill();
-        this.updateActivationMap();
-      };
-    },
-    updateActivationMap: function() {
-      let map_ctx = this.$refs.map.getContext("2d");
-      let draw_ctx = this.$refs.draw.getContext("2d");
-      let map_data = map_ctx.getImageData(
-        0,
-        0,
-        this.canvas_width,
-        this.canvas_height
-      );
-      let correction_data = draw_ctx.getImageData(
-        0,
-        0,
-        this.canvas_width,
-        this.canvas_height
-      );
 
-      let pixel_color = this.graphics.activation_color;
+      //Check if using eraser or painbrush
       if (this.tool === "deactivate") {
-        pixel_color = this.graphics.inactivation_color;
+        ctx.globalCompositeOperation = "destination-out";
+      } else {
+        ctx.globalCompositeOperation = "source-over";
       }
 
-      for (let i = 0; i < correction_data.data.length; i += 4) {
-        if (correction_data.data[i + 2] === 255) {
-          map_data.data[i] = pixel_color[0];
-          map_data.data[i + 1] = pixel_color[1];
-          map_data.data[i + 2] = pixel_color[2];
-          map_data.data[i + 3] = pixel_color[3];
+      canvas.onmousedown = () => {
+        //Draw circle
+        ctx.beginPath();
+        ctx.arc(
+          event.offsetX,
+          event.offsetY,
+          this.tool_size / 2,
+          0,
+          2 * Math.PI
+        );
+        ctx.fill();
+        //Start drawing
+        this.tool_started = true;
+        this.paint.points.push({ x: event.offsetX, y: event.offsetY });
+        // ctx.beginPath();
+        // ctx.moveTo(event.offsetX, event.offsetY);
+      };
+
+      if (this.tool_started) {
+        this.paint.points.push({ x: event.offsetX, y: event.offsetY });
+
+        ctx.beginPath();
+
+        // ctx.lineTo(event.offsetX, event.offsetY);
+        // ctx.stroke();
+
+        let points_length = this.paint.points.length;
+
+        //draw just the last segment
+        if (points_length > 1) {
+          ctx.moveTo(
+            this.paint.points[points_length - 2].x,
+            this.paint.points[points_length - 2].y
+          );
+          ctx.lineTo(
+            this.paint.points[points_length - 1].x,
+            this.paint.points[points_length - 1].y
+          );
         }
+        ctx.stroke();
+        // ctx.closePath();
       }
 
-      // draw updated activation map
-      map_ctx.putImageData(map_data, 0, 0);
-
-      // clear drawings
-      let clear_data = map_ctx.createImageData(map_data);
-      draw_ctx.putImageData(clear_data, 0, 0);
+      canvas.onmouseup = () => {
+        //Stop drawing
+        this.tool_started = !this.tool_started;
+        //Draw circle
+        ctx.beginPath();
+        ctx.arc(
+          event.offsetX,
+          event.offsetY,
+          this.tool_size / 2,
+          0,
+          2 * Math.PI
+        );
+        ctx.fill();
+      };
     },
     storeActivationMap: function() {
-      // store activation map of current image
+    //Store activation map of current image
 
-      let map_ctx = this.$refs.map.getContext("2d");
-
+      //Get RGBA array from canvas
+      let map_ctx = this.$refs.draw.getContext("2d");
       let map_data = map_ctx.getImageData(
         0,
         0,
@@ -448,21 +520,42 @@ export default {
         this.canvas_height
       );
 
-      this.activation_maps[this.current_image.image_id] = map_data.data;
+      let current_map = this.activation_maps[this.current_image.image_id];
+
+      //Convert RGBA array into nested binary arrays
+      for (
+        let pixel_index = 0;
+        pixel_index < map_data.data.length;
+        pixel_index += 4
+      ) {
+        let row_index = Math.floor(pixel_index / 4 / this.canvas_width);
+        let col_index = (pixel_index / 4) % this.canvas_width;
+        if (map_data.data[pixel_index + 3] !== 0) {
+          current_map[row_index][col_index] = 1;
+        } else {
+          current_map[row_index][col_index] = 0;
+        }
+      }
+
+      this.activation_maps[this.current_image.image_id] = current_map;
+      console.log(current_map)
     },
-    openDialog: function() {
-      this.dialog = true;
-    },
-    closeDialog: function() {
-      this.dialog = false;
+    undoChanges: function() {},
+    toggleSubmissionDialog: function() {
+      this.dialog = !this.dialog;
     },
     saveData: function(payload) {
       const path = "http://localhost:5000/active_learning";
       axios
         .post(path, payload)
         .then(() => {
+          console.log("Stop loading");
           this.loading = false;
-          this.getActivationMap();
+          this.getActivationMap()
+            .then(returnVal => {
+              this.loadActivationMap();
+            })
+            .catch(err => console.log("Axios err: ", err));
         })
         .catch(error => {
           console.log(error);
@@ -472,36 +565,21 @@ export default {
       setTimeout(this.updateTrainingProgress, 10000);
     },
     onSubmit: function(from_scratch) {
+      //Store current activation map
       this.storeActivationMap();
-      this.loading_message = "Initializing Training..."; //Reset loading message
-      
-      // convert rgba array to binary array
-      let corrected_activation_maps = {};
-      for (let image_id in this.activation_maps) {
-        let map_array = [];
-        for (
-          let pixel_index = 0;
-          pixel_index < this.activation_maps[image_id].length;
-          pixel_index += 4
-        ) {
-          if (this.activation_maps[image_id][pixel_index] === 255) {
-            map_array.push(1);
-          } else {
-            map_array.push(0);
-          }
-        }
-        corrected_activation_maps[image_id] = map_array;
-      }
+      //Reset loading message
+      this.loading_message = "Initializing Training..."; 
 
       const payload = {
         from_scratch: from_scratch,
-        activation_maps: corrected_activation_maps
+        activation_maps: this.activation_maps
       };
-
       this.saveData(payload);
 
+      //Close submission dialog
       this.dialog = false;
 
+      //Open loading window
       this.loading = true;
     },
     updateTrainingProgress: function() {
@@ -530,23 +608,24 @@ export default {
     }
   },
   created() {
-    this.getActivationMap();
+    this.getActivationMap()
+      .then(returnVal => {
+        this.loadActivationMap();
+        this.loadImage(this.current_image);
+      })
+      .catch(err => console.log("Axios err: ", err));
   },
   mounted() {}
 };
 </script>
 
 <style scoped>
-#container {
-  position: relative;
-}
 .canvas {
   position: absolute;
   cursor: none;
 }
 #draw {
-  position: relative;
   cursor: none;
-  float: left;
+  opacity: 0.3;
 }
 </style>

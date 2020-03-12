@@ -1,127 +1,68 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-import numpy as np
 import requests
 import pickle
 import json
 import nibabel as nib
-from skimage.transform import resize
 import skimage.io as io
-import pandas as pd
-import os
-from datetime import datetime
 import tensorflow as tf
 from unet.model import *
 from unet.data import *
 import keras
 import time
-import sqlite3
-
+import random
 from tensorflow.python.keras.backend import set_session
+from unet.DataGeneratorClass import *
+from helpers import *
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-#GUI canvas dimensions
+#GUI canvas dimensions (These values must agree with front end)
 canvas_width = 600
 canvas_height = 500
 
-images = []
+#model input dimensions
+input_size = 192
 
-for slice_id in range(100, 106):
+#Database path
+db = "database/active_learning_20191210.db"
 
-    images.append({
-        "image_id": str(slice_id - 99),
-        "disease": "Stroke",
-        "path": "Site6_031923___" + str(slice_id)
-    })
+#Number of images displayed on the GUI
+sample_size = 20
 
-activation_maps = {
-    #image_id(string): activation map array
-}
-
-
-def resizeArray(data):
-    data = resize(data, (canvas_height, canvas_width),
-                  mode='reflect',
-                  preserve_range=True,
-                  order=3)
-    return data
-
-
-def resizeImage(data):
-    # resize brain image to GUI canvas size
-    data = resize(data, (canvas_height, canvas_width),
-                  mode='reflect',
-                  preserve_range=True,
-                  order=3)
-    io.imsave(("output/resized_input.png"), data / 100)
-    return None
-
-
-def loadActivationMap(filename):
-    # load activation map from numpy file
-    numpy_activation = np.load(filename)
-
-    activation_converted = []
-    for row in numpy_activation[0]:
-        # numpy_activation is an array with 1 element
-        row_converted = []
-        for val in row:
-            # val is an array with 1 element
-            if val[0] > 0.5:
-                row_converted.append(1)
-            else:
-                row_converted.append(0)
-        activation_converted.append(row_converted)
-
-    numpy_activation = np.array(activation_converted)
-    resized_numpy_activation = resizeArray(numpy_activation)
-
-    activation = resized_numpy_activation.tolist()
-
-    return activation
-
-
-def findLatestOutput():
-
-    files = os.listdir('output')
-    files.remove('.DS_Store')
-
-    files.sort(key=lambda file: datetime.strptime(file, '%Y_%m_%d_%H_%M'))
-
-    latest_output = files[-1]
-
-    return latest_output
-
-
-def findLatestModel():
-    #Load in latest iteration of model
-    df = pd.read_csv('models/model_tracking.csv', parse_dates=['date'])
-    latest_model = df.sort_values('date',
-                                  ascending=False).iloc[0]['model_name']
-
-    return latest_model
-
+#Number of epochs for retraining (not from scratch)
+nepochs_retrain = 30
+#Number of epochs for initial training (from scratch)
+nepochs_initial = 30
 
 def getPrediction():
+    """
+    Make predictions for all images
+    """
+
     #URL with the predict method
-    url = 'http://localhost:5000/getPrediction'
+    prediction_url = 'http://localhost:5000/getPrediction'
+
+    img_df = query_db(db, 'image_log')
 
     post_data = {}
+    #Make predictions on all images
+    for index, row in img_df.iterrows():
 
-    # load nifti
-    img = nib.load('data/031923_t1w_deface_stx.nii.gz')
-    data = np.array(img.dataobj)
+        image_id = row['image_id']
+        image_np_path = row['file_path']
+        #Note: loaded image already has the correct dimensions
+        img_np = np.load(image_np_path, allow_pickle=True)
+        #Convert to list
+        post_data[image_id] = img_np.tolist()
 
-    for image_id in activation_maps:
-
-        image_data = (data[:, :, int(image_id)+ 99])
-        image_data = resize(image_data, (256, 256),
-                            mode='reflect',
-                            preserve_range=True,
-                            order=3)
-
-        post_data[image_id] = image_data.tolist()
+    # #Make predictions on samples only
+    # for image in images:
+    #     index = img_df[img_df['image_id'] == int(
+    #         image['image_id'])].index.values.astype(int)[0]
+    #     image_np_path = img_df.iloc[index]['file_path']
+    #     img_np = np.load(image_np_path)
+    #     post_data[image['image_id']] = img_np.tolist()
 
     j_data = json.dumps(post_data)
 
@@ -129,98 +70,79 @@ def getPrediction():
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
 
     #Send a post request
-    r = requests.post(url, data=j_data, headers=headers)
+    r = requests.post(prediction_url, data=j_data, headers=headers)
 
-    return None
+    decoded_info = json.loads(r.text)
+
+    return decoded_info['map_ids']
 
 
 def updateTrainingData(corrected_activation_maps):
+    """
+    Update training data and associated tables (map log and image-to-map log) in database
+    """
 
-    conn = sqlite3.connect("database/active_learning_20191210.db")
-    cur = conn.cursor()
+    print("Updating training data...")
 
     for image_id, activation_map in corrected_activation_maps.items():
 
-        # convert activation_map(dict) to mapArray(list)
-        mapArray = []
-
-        for row_index in range(canvas_height):
-            row = []
-            for column_index in range(canvas_width):
-                pixel_index = row_index * canvas_width + column_index
-                row.append(activation_map[pixel_index])
-            mapArray.append(row)
-
-        mapNumPy = np.array(mapArray)
-        mapNumPy = resizeArray(mapNumPy)
-
-        # current time
         now = datetime.now()
         cur_date = str(now.year) + '_' + str(now.month) + '_' + str(
             now.day) + '_' + str(now.hour) + '_' + str(now.minute)
 
-        # update map_log
-        # file path for activation map
-        map_path = 'data/train/label/' + cur_date + '_' + image_id + '.png'
+        #Save corrected map as NumPy
+        map_np = np.array(activation_map)
+        print(np.where(map_np != 0))
+        map_np = resizeArray(map_np, input_size, input_size)
+        map_path = 'data/train/label/' + cur_date + '_' + str(
+                    image_id) + '.npy'
+        print(np.where(map_np != 0))
+        np.save(map_path, map_np)
+        print(f"Saving map of image {image_id} to {map_path}")
+
+        #Update map_log
         is_manual = True
-        map_entry = (map_path, cur_date, is_manual)
+        map_id = updateDB(db, 'map_log',
+                          '(file_path, time_created, is_manual)', (map_path, cur_date, is_manual))
+        #Update image_to_map log
+        updateDB(db, 'image_to_map_log', '(image_id, map_id)',
+                 (image_id, map_id))
 
-        cur.execute(
-            " INSERT INTO map_log (file_path, time_created, is_manual) VALUES"
-            + str(map_entry))
+        image_np_path = query_db(db, 'image_log', 'file_path', ['image_id'], [image_id], output_type = str)
+        img_np = np.load(image_np_path)
+
+        #File path for saving image
+        image_path = 'data/train/image/' + cur_date + '_' + str(
+            image_id) + '.npy'
+        #Save image as NumPy
+        np.save(image_path, img_np)
+        print(f"Saving Image {image_id} to {image_path}")
         
-        map_id = cur.lastrowid
 
-        # save image of corrected activation map
-        io.imsave(map_path, mapNumPy)
-
-        image_to_map_entry = (image_id, map_id)
-
-        # update image_to_map log
-        cur.execute(" INSERT INTO image_to_map_log (image_id, map_id) VALUES" + str(image_to_map_entry))
-
-        # load nifti
-        img = nib.load('data/031923_t1w_deface_stx.nii.gz')
-        data = np.array(img.dataobj)
-        data = (data[:, :, int(image_id) + 99])
-        data = resize(data, (256, 256),
-                      mode='reflect',
-                      preserve_range=True,
-                      order=3)
-
-        # file path for image
-        image_path = 'data/train/image/' + cur_date + '_' + image_id + '.png'
-
-        # save corresponding image to each corrected activation map
-        io.imsave(image_path, data / 100)
+    print("Training data updated!")
+    return "Training data updated!"
 
 
-    conn.commit()
-    conn.close()
-
-    return None
-
-
-def retrain(from_scratch):
+def retrain(from_scratch, activation_maps, image_ids):
+    """
+    Send a POST request to the RETRAIN or TRAIN_FROM_SCRATCH URL
+    """
 
     graph = tf.get_default_graph()
 
     if from_scratch:
         #URL with the predict method
         url = 'http://localhost:5000/initialModel'
+        #Jsonify
+        j_data = json.dumps('Initiate retraining model')
     else:
         url = 'http://localhost:5000/retrain'
-
-    #Jsonify
-    # j_data = json.dumps(data.tolist())
-    j_data = json.dumps('hi')
+        j_data = json.dumps(image_ids)
 
     #Create headers for json
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-
     #Send a post request
     r = requests.post(url, data=j_data, headers=headers)
-    print(r.text)
 
     #Retrieve output and save/update model tracking csv
     decoded_model_info = json.loads(r.text)
@@ -229,47 +151,41 @@ def retrain(from_scratch):
     model_tracking = pd.read_csv('models/model_tracking.csv')
     model_tracking = model_tracking.append(json.loads(r.text))
     model_tracking.to_csv('models/model_tracking.csv', index=False)
-    print('Model Data Saved!')
 
     #Update training log in database
     model_path = 'models/' + decoded_model_info['model_name']
     training_entry = (decoded_model_info['date'], model_path, from_scratch)
-
-    conn = sqlite3.connect("database/active_learning_20191210.db")
-
-    cur = conn.cursor()
-
-    cur.execute(
-        " INSERT INTO training_log (training_time, file_path, from_scratch) VALUES"
-        + str(training_entry))
-
-    training_id = cur.lastrowid
+    training_id = updateDB(db, 'training_log',
+                           '(training_time, file_path, from_scratch)',
+                           training_entry)
 
     #Update train-to-image log in database
-    df = pd.read_sql_query(" SELECT * from image_log", conn)
+    if not from_scratch:
+        #Model retrained on corrected images only
+        #activation_maps maps image ids to map arrays
+        for img_id in activation_maps.keys():
+            train_to_image_entry = (img_id, training_id)
+            updateDB(db, 'train_to_image_log', '(image_id, training_id)',
+                     train_to_image_entry)
+    else:
+        #Model trained on all images from scratch
+        img_df = query_db(db, 'image_log')
+        for index, row in img_df.iterrows():
+            train_to_image_entry = (row['image_id'], training_id)
+            updateDB(db, 'train_to_image_log', '(image_id, training_id)',
+                     train_to_image_entry)
 
-    image_ids = df['image_id'].tolist()
+    return "Retrain request submitted!"
 
-    for image_id in image_ids:
-
-        train_to_image_entry = (image_id, training_id)
-        cur.execute(" INSERT INTO train_to_image_log (image_id, training_id) VALUES" + str(train_to_image_entry))
-
-    conn.commit()
-    conn.close()
-
-    return None
-
-
-# instantiate the app
+#Instantiate the app
 app = Flask(__name__)
 app.config.from_object(__name__)
 
-# enable CORS
+#Enable CORS
 CORS(app, resources={r'/*': {'origins': '*'}})
 
-#Create model
-model = unet()
+#Create model (imported from model.py)
+model = Unet_origin()
 
 #This is needed to ensure you are using the correct tensor graph
 graph = tf.get_default_graph()
@@ -277,26 +193,30 @@ graph = tf.get_default_graph()
 sess = tf.Session()
 
 
-# sanity check route
+#Sanity check
 @app.route('/')
 @app.route('/home')
 def home():
-    return 'Test'
+    return 'Welcome to the Active Learning GUI!'
 
 
 @app.route('/active_learning', methods=['GET', 'POST'])
 def active_learning():
-    response_object = {'status': 'success'}
+
+    response_object = {}
     if request.method == 'POST':
         # POST
         post_data = request.get_json()
 
         corrected_activation_maps = post_data.get('activation_maps')
-        from_scratch = post_data.get('from_scratch')
 
+        image_ids = corrected_activation_maps.keys()
+        image_ids = list(image_ids)
+
+        from_scratch = post_data.get('from_scratch')
         updateTrainingData(corrected_activation_maps)
 
-        retrain(from_scratch)
+        retrain(from_scratch, corrected_activation_maps, image_ids)
 
         getPrediction()
 
@@ -304,18 +224,20 @@ def active_learning():
 
     else:
         # GET
+        #Sample images by DICE score
+        dice_score = updateDiceScores()
+        images = samplebyDice(dice_score, sample_size)
         response_object['images'] = images
 
         latest_model = findLatestModel()
         response_object['latest_model'] = latest_model
 
-        latest_output = findLatestOutput()
-
+        #Send latest prediction maps or None if there is no prediction
+        activation_maps = {}
         for image in images:
-            activation_maps[image['image_id']] = loadActivationMap(
-                'output/' + latest_output + '/' + image['image_id'] +
-                '_prediction.npy')
-
+            latest_prediction = loadLatestPrediction(image['image_id'])
+            latest_prediction = resizeArray(latest_prediction, canvas_height, canvas_width)
+            activation_maps[image['image_id']] = latest_prediction.tolist()
         response_object['activation_maps'] = activation_maps
 
     return jsonify(response_object)
@@ -325,6 +247,8 @@ def active_learning():
 @app.route('/getPrediction', methods=['POST'])
 #Prediction method
 def makecalc():
+
+    print("Making predictions...")
 
     global graph
     global sess
@@ -341,57 +265,51 @@ def makecalc():
 
         #Load in latest iteration of model
         latest_model = findLatestModel()
-
         model.load_weights('models/' + latest_model)
 
         #Retrieve request
         data = request.get_json()
 
-        conn = sqlite3.connect("database/active_learning_20191210.db")
-        cur = conn.cursor()
+        map_ids = []
 
-        for image_id in activation_maps:
+        for image_id, image_data in data.items():
 
-            #Predict on data and save image
             pred = model.predict(
-                np.array(data[image_id]).reshape(1, 256, 256, 1))
-            io.imsave(
-                ("output/" + cur_date + '/' + image_id + "_prediction.png"),
-                pred[0, :, :, 0])
+                np.array(image_data).reshape(1, input_size, input_size, 1))
+            io.imsave(("output/" + cur_date + '/' + str(image_id) +
+                       "_prediction.png"), pred[0, :, :, 0])
 
-            #Return max value
             max_value = np.array2string(pred.max())
 
             #Save as numpy arrays
-            np.save('output/' + cur_date + '/' + image_id + '_input.npy',
-                    np.array(data))
+            #? Does this need to be saved? 
+            np.save('output/' + cur_date + '/' + str(image_id) + '_input.npy',
+                    np.array(image_data))
 
-            map_path = 'output/' + cur_date + '/' + image_id + '_prediction.npy'
-            np.save(map_path, np.array(pred)) 
-
+            #Update map log
+            map_path = 'output/' + cur_date + '/' + str(
+                image_id) + '_prediction.npy'
+            np.save(map_path, np.array(pred))
             is_manual = False
-
             map_entry = (map_path, cur_date, is_manual)
 
-            cur.execute(" INSERT INTO map_log (file_path, time_created, is_manual) VALUES" + str(map_entry))
+            map_id = updateDB(db, 'map_log',
+                              '(file_path, time_created, is_manual)',
+                              map_entry)
 
-            map_id = cur.lastrowid
+            #Update image_to_map log
+            image_to_map_entry = (image_id, map_id)
+            updateDB(db, 'image_to_map_log', '(image_id, map_id)',
+                     image_to_map_entry)
 
-            image_to_map_entry = (image_id, map_id) 
-
-            cur.execute(" INSERT INTO image_to_map_log (image_id, map_id) VALUES" + str(image_to_map_entry))                   
-
-        conn.commit()
-        conn.close()
-
-        #Return result
-        return 'New predictions uploaded!'
+        return None
 
 
 total_epochs = 1
 
 
 #Callback that will keep track of training times
+#Try to get time estimate before epoch starts
 class TimeHistory(keras.callbacks.Callback):
 
     current_epoch = 0
@@ -434,9 +352,8 @@ class TimeHistory(keras.callbacks.Callback):
             file.close()
 
 
-#Retrain page
+#Retrain only on the 10 corrected images
 @app.route('/retrain', methods=['POST'])
-#Prediction method
 def retrain_model():
 
     global graph
@@ -444,45 +361,77 @@ def retrain_model():
     with graph.as_default():
         set_session(sess)
 
+        #Input dimensions
+        input_dim = (192, 192, 1)  #regularunet
+        input_dim_for_data_gen = input_dim
+
+        #Parameters
+        train_params_multiclass = {
+            'normalize': False,
+            'batch_size': 4,
+            'n_classes': 1,
+            'n_channels': 1,
+            'shuffle': True
+        }
+
+        image_ids = request.get_json()
+        print(image_ids)
+
+        patIDList = []
+        for image_id in image_ids:
+            image_np_path = query_db(db, 'image_log', 'file_path', ['image_id'], [image_id], output_type=str)
+            image_np_path = image_np_path.replace('data/train/image/', '')
+            print(image_np_path)
+            patIDList.append(image_np_path)
+        #patIDList = np.random.choice(patIDList, 24) #choose 24 random subjects
+
+        #Generator
+        train_generator = DataGenerator_stroke_unet(patIDList,
+                                                    '',
+                                                    data_dir='',
+                                                    xls_filepath='',
+                                                    dim=input_dim_for_data_gen,
+                                                    **train_params_multiclass)
+
+        #Model
+        model = Unet_origin()
+        print(model.summary())
+
         #Load in latest iteration of model
         df = pd.read_csv('models/model_tracking.csv', parse_dates=['date'])
         latest_model = df.sort_values('date',
                                       ascending=False).iloc[0]['model_name']
         model.load_weights('models/' + latest_model)
-
-        #Re-train parameters
-        data_gen_args = dict(rotation_range=0.2,
-                             width_shift_range=0.05,
-                             height_shift_range=0.05,
-                             shear_range=0.05,
-                             zoom_range=0.05,
-                             horizontal_flip=True,
-                             fill_mode='nearest')
-
-        #Train generator
-        myGene = trainGenerator(1,
-                                'data/train',
-                                'image',
-                                'label',
-                                data_gen_args,
-                                save_to_dir=None)
+        model.compile(optimizer=Adam(lr=1e-5),
+                      loss='binary_crossentropy',
+                      metrics=['accuracy'])
 
         #Check point
         now = datetime.now()
         cur_date = str(now.year) + '_' + str(now.month) + '_' + str(
             now.day) + '_' + str(now.hour) + '_' + str(now.minute)
-        model_checkpoint = ModelCheckpoint('models/unet_stroke_' + cur_date +
-                                           '.hdf5',
-                                           monitor='loss',
-                                           verbose=1,
-                                           save_best_only=True)
-        time_callback = TimeHistory()
 
-        #Train model
-        model.fit_generator(myGene,
-                            steps_per_epoch=5,
-                            epochs=total_epochs,
-                            callbacks=[model_checkpoint, time_callback])
+        #Construct filename
+        FILEPATH_MODEL = 'models/unet_stroke_' + cur_date + '.hdf5'
+
+        #Callbacks
+        callbacks_list = [
+            ModelCheckpoint(FILEPATH_MODEL,
+                            monitor='loss',
+                            verbose=1,
+                            save_best_only=True,
+                            mode='auto'),
+            TimeHistory()
+        ]
+
+        #################### RE-TRAIN ####################
+        #Train
+        model.fit_generator(generator=train_generator,
+                            verbose=1,
+                            epochs=nepochs_retrain,
+                            callbacks=callbacks_list,
+                            use_multiprocessing=False,
+                            workers=4)
 
         #Data that we will send back
         data = [{
@@ -499,9 +448,8 @@ def retrain_model():
         return jsonify(data)
 
 
-#Train model from scratch
+#Train model from scratch on all images (currently 24 random images)
 @app.route('/initialModel', methods=['POST'])
-#Prediction method
 def train_from_scratch():
 
     global graph
@@ -509,39 +457,66 @@ def train_from_scratch():
     with graph.as_default():
         set_session(sess)
 
-        #Re-train parameters
-        data_gen_args = dict(rotation_range=0.2,
-                             width_shift_range=0.05,
-                             height_shift_range=0.05,
-                             shear_range=0.05,
-                             zoom_range=0.05,
-                             horizontal_flip=True,
-                             fill_mode='nearest')
+        #################### MODEL INPUTS ####################
+        #Imput image
+        input_dim = (192, 192, 1)  #regular unet
+        # input_dim = (192, 192, 4) #dunet
 
-        #Train generator
-        myGene = trainGenerator(1,
-                                'data/train',
-                                'image',
-                                'label',
-                                data_gen_args,
-                                save_to_dir=None)
+        input_dim_for_data_gen = input_dim
+
+        #Parameters
+        train_params_multiclass = {
+            'normalize': False,
+            'batch_size': 4,
+            'n_classes': 1,
+            'n_channels': 1,
+            'shuffle': True
+        }
+
+        patIDList = os.listdir('data/train/image')
+        #patIDList = np.random.choice(patIDList, 24)  #choose 24 random subjects
+
+        train_generator = DataGenerator_stroke_unet(patIDList,
+                                                    '',
+                                                    data_dir='',
+                                                    xls_filepath='',
+                                                    dim=input_dim_for_data_gen,
+                                                    **train_params_multiclass)
+        #Regular unet DataGenerator_stroke_unet
+        #DUNET DataGenerator_stroke_d_unet
+
+        #Model
+        model = Unet_origin()
+        model.compile(optimizer=Adam(lr=1e-5),
+                      loss='binary_crossentropy',
+                      metrics=['accuracy'])
+        print(model.summary())
+        nepochs_initial = 10
 
         #Check point
         now = datetime.now()
         cur_date = str(now.year) + '_' + str(now.month) + '_' + str(
             now.day) + '_' + str(now.hour) + '_' + str(now.minute)
-        model_checkpoint = ModelCheckpoint('models/unet_stroke_' + cur_date +
-                                           '_init.hdf5',
-                                           monitor='loss',
-                                           verbose=1,
-                                           save_best_only=True)
-        time_callback = TimeHistory()
+        FILEPATH_MODEL = 'models/unet_stroke_' + cur_date + '_init.hdf5'
 
-        #Train model
-        model.fit_generator(myGene,
-                            steps_per_epoch=1,
-                            epochs=1,
-                            callbacks=[model_checkpoint, time_callback])
+        #Callbacks
+        callbacks_list = [
+            ModelCheckpoint(FILEPATH_MODEL,
+                            monitor='loss',
+                            verbose=1,
+                            save_best_only=True,
+                            mode='auto'),
+            TimeHistory()
+        ]
+
+        #################### TRAIN ####################
+        #Train
+        model.fit_generator(generator=train_generator,
+                            verbose=1,
+                            epochs=nepochs_initial,
+                            callbacks=callbacks_list,
+                            use_multiprocessing=False,
+                            workers=4)
 
         #Data that we will send back
         data = [{
@@ -572,4 +547,4 @@ def check_training_progress():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    

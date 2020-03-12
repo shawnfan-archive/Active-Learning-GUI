@@ -1,3 +1,21 @@
 Training Started...
-Elapsed Time: 19.25242018699646
-Estimated Time Remaining:00:00:19
+Elapsed Time: 80.95814776420593
+Estimated Time Remaining:00:01:20
+Elapsed Time: 59.48360085487366
+Estimated Time Remaining:00:00:00
+Elapsed Time: 58.82089614868164
+Estimated Time Remaining:23:59:01
+Elapsed Time: 59.08791208267212
+Estimated Time Remaining:23:58:01
+Elapsed Time: 58.52027487754822
+Estimated Time Remaining:23:57:04
+Elapsed Time: 59.98416805267334
+Estimated Time Remaining:23:56:00
+Elapsed Time: 59.252254009246826
+Estimated Time Remaining:23:55:03
+Elapsed Time: 59.80356502532959
+Estimated Time Remaining:23:54:01
+Elapsed Time: 57.88340401649475
+Estimated Time Remaining:23:53:14
+Elapsed Time: 59.23084592819214
+Estimated Time Remaining:23:52:06
