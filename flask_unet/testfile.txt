@@ -1,21 +1,61 @@
 Training Started...
-Elapsed Time: 80.95814776420593
-Estimated Time Remaining:00:01:20
-Elapsed Time: 59.48360085487366
-Estimated Time Remaining:00:00:00
-Elapsed Time: 58.82089614868164
-Estimated Time Remaining:23:59:01
-Elapsed Time: 59.08791208267212
-Estimated Time Remaining:23:58:01
-Elapsed Time: 58.52027487754822
-Estimated Time Remaining:23:57:04
-Elapsed Time: 59.98416805267334
-Estimated Time Remaining:23:56:00
-Elapsed Time: 59.252254009246826
-Estimated Time Remaining:23:55:03
-Elapsed Time: 59.80356502532959
-Estimated Time Remaining:23:54:01
-Elapsed Time: 57.88340401649475
-Estimated Time Remaining:23:53:14
-Elapsed Time: 59.23084592819214
-Estimated Time Remaining:23:52:06
+Elapsed Time (Batch): 24.144097089767456
+Elapsed Time (Batch): 17.614420890808105
+Elapsed Time (Batch): 15.094626903533936
+Elapsed Time (Batch): 16.06627893447876
+Elapsed Time (Batch): 16.395272970199585
+Elapsed Time (Epoch): 92.1545729637146
+Elapsed Time (Batch): 16.56679391860962
+Elapsed Time (Batch): 19.37973403930664
+Elapsed Time (Batch): 17.59817385673523
+Elapsed Time (Batch): 15.017463207244873
+Elapsed Time (Batch): 15.36211609840393
+Elapsed Time (Epoch): 84.73646306991577
+Elapsed Time (Batch): 16.018369913101196
+Elapsed Time (Batch): 15.679226160049438
+Elapsed Time (Batch): 18.10430598258972
+Elapsed Time (Batch): 16.345746755599976
+Elapsed Time (Batch): 15.605157136917114
+Elapsed Time (Epoch): 82.5037727355957
+Elapsed Time (Batch): 15.348406076431274
+Elapsed Time (Batch): 17.271160125732422
+Elapsed Time (Batch): 15.680641174316406
+Elapsed Time (Batch): 16.914419889450073
+Elapsed Time (Batch): 17.60956621170044
+Elapsed Time (Epoch): 83.66219425201416
+Elapsed Time (Batch): 18.10867214202881
+Elapsed Time (Batch): 16.978084802627563
+Elapsed Time (Batch): 15.17196011543274
+Elapsed Time (Batch): 15.101024866104126
+Elapsed Time (Batch): 16.796268701553345
+Elapsed Time (Epoch): 82.91449809074402
+Elapsed Time (Batch): 17.773336172103882
+Elapsed Time (Batch): 18.7427761554718
+Elapsed Time (Batch): 18.339213848114014
+Elapsed Time (Batch): 15.328446865081787
+Elapsed Time (Batch): 15.542372703552246
+Elapsed Time (Epoch): 86.41325116157532
+Elapsed Time (Batch): 15.64355206489563
+Elapsed Time (Batch): 15.177374839782715
+Elapsed Time (Batch): 17.49160099029541
+Elapsed Time (Batch): 17.129329919815063
+Elapsed Time (Batch): 18.58747410774231
+Elapsed Time (Epoch): 85.5076858997345
+Elapsed Time (Batch): 18.868477821350098
+Elapsed Time (Batch): 13.50639820098877
+Elapsed Time (Batch): 12.87762999534607
+Elapsed Time (Batch): 14.220427989959717
+Elapsed Time (Batch): 12.552881002426147
+Elapsed Time (Epoch): 72.81440687179565
+Elapsed Time (Batch): 14.172955989837646
+Elapsed Time (Batch): 12.753486156463623
+Elapsed Time (Batch): 14.064584970474243
+Elapsed Time (Batch): 13.372978925704956
+Elapsed Time (Batch): 12.777699947357178
+Elapsed Time (Epoch): 67.79754114151001
+Elapsed Time (Batch): 12.296881198883057
+Elapsed Time (Batch): 12.884319067001343
+Elapsed Time (Batch): 12.727006912231445
+Elapsed Time (Batch): 14.337431907653809
+Elapsed Time (Batch): 12.442799806594849
+Elapsed Time (Epoch): 64.70962882041931

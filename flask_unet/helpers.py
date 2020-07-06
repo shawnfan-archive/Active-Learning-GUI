@@ -5,7 +5,29 @@ import pandas as pd
 from skimage.transform import resize
 from unet.dice import *
 import sqlite3
+from sqlite_queries import *
 
+#GUI canvas dimensions (These values must agree with front end)
+canvas_width = 600
+canvas_height = 500
+
+def removeFile(filepath):
+    """
+    Check if a file exists and remove it if it exists
+
+    Arguments: 
+        filepath - file path of a file
+    Returns: None
+    """
+
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    # try:
+    #     os.remove(filename)
+    # except OSError as e: # this would be "except OSError, e:" before Python 2.6
+    #     if e.errno != errno.ENOENT: # errno.ENOENT = no such file or directory
+    #         raise # re-raise exception if a different error occurred
 
 def listDirectory(directory):
     """
@@ -32,7 +54,8 @@ def resizeArray(data, h, w):
         rdata: resized image data as NumPy array
     """
 
-    #! For binary maps, use an order of 0 - neartest neighbor and set anti_aliasing to False
+    #! For binary maps, use an order of 0 - neartest neighbor and set anti_aliasing to False 
+    #! Documentation: https://scikit-image.org/docs/dev/api/skimage.transform.html?ref=driverlayer.com/web#skimage.transform.resize
     rdata = resize(data, (h, w),
                    mode='reflect',
                    preserve_range=True,
@@ -41,13 +64,29 @@ def resizeArray(data, h, w):
 
     return rdata
 
+def findLatestDir(search_dir):
+    """
+    """
 
-def findLatestOutput():
+    files = os.listdir(search_dir)
+
+    #'.DS_Store' is part of Mac OS
+    if '.DS_Store' in files:
+        files.remove('.DS_Store')
+
+    if len(files) == 0:
+        return None
+
+    files.sort(key=lambda file: datetime.strptime(file, '%Y_%m_%d_%H_%M'))
+
+    return files[-1]
+
+def findLatestOutput(search_dir = 'output'):
     """
     Find the latest output folder, return None if no output exists
     """
 
-    files = os.listdir('output')
+    files = os.listdir(search_dir)
     #'.DS_Store' file is part of Mac OS
     if '.DS_Store' in files:
         files.remove('.DS_Store')
@@ -81,88 +120,6 @@ def loadActivationMap(filename):
 
     return np.array(activation_converted)
 
-
-def findLatestModel():
-    """
-    Load in latest iteration of model based on model_tracking.csv
-    """
-    df = pd.read_csv('models/model_tracking.csv', parse_dates=['date'])
-    if df.shape[0] == 0:
-        return "Latest model not found. Please train a new model from scratch."
-    latest_model = df.sort_values('date',
-                                  ascending=False).iloc[0]['model_name']
-
-    return latest_model
-
-
-def query_db(db_name,
-             log_name,
-             target_col='*',
-             condition_col=None,
-             condition_val=None,
-             output_type=None):
-    """
-    """
-
-    conn = sqlite3.connect(db_name)
-
-    query = " SELECT " + target_col + " from " + log_name
-    condition = ""
-    if condition_col != None:
-        condition = " where "
-        for i in range(len(condition_col)):
-            if i > 0:
-                condition += " and "
-            condition = condition + condition_col[i]
-            if type(condition_val[i]) == list:
-                condition = condition + " in " + str(tuple(condition_val[i]))
-            else:
-                condition = condition + " = " + str(condition_val[i])
-
-    query = query + condition
-
-    df = pd.read_sql_query(query, conn)
-
-    conn.close()
-
-    if output_type == str:
-        output = df[target_col].to_string(index=False)
-        output = output.replace(' ', '')  #Remove space
-    elif output_type == list:
-        output = df[target_col].to_list()
-    else:
-        output = df
-
-    return output
-
-
-def updateDB(db_path, log_name, col_names, entry):
-    """
-    Update a specific table in a database
-
-    Arguments:
-        db_path: database path 
-        log_name: name of a table
-        col_names: an array of names of all columns in the table
-        entry: a tuple of values to be added to the table
-    
-    Returns:
-
-    """
-
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-
-    cur.execute(" INSERT INTO " + log_name + " " + str(col_names) +
-                " VALUES " + str(entry))
-    entry_id = cur.lastrowid
-
-    conn.commit()
-    conn.close()
-
-    return entry_id
-
-
 # def updateLinkedLogs(db_path, log_names, column_names, entries):
 #     """
 #     Update an array of tables linked by FOREIGN KEY constraint in database
@@ -195,6 +152,22 @@ def updateDB(db_path, log_name, col_names, entry):
 db = "database/active_learning_20191210.db"
 input_size = 192
 
+def findLatestModel():
+    """
+    Find the file name of the latest model in /models
+
+    Arguments: None
+    Returns: 
+        latest_model - the name of the latest model
+    """
+
+    model_paths = query_db(db, 'training_log', target_col='file_path', output_type=list)
+    if len(model_paths) == 0:
+        latest_model = "No model found. Please train a new model from scratch."
+    else:
+        latest_model = model_paths[-1].replace('models/', '')
+
+    return latest_model
 
 def loadLatestPrediction(img_id):
     """
@@ -205,6 +178,8 @@ def loadLatestPrediction(img_id):
                        'image_to_map_log',
                        'map_id', ['image_id'], [img_id],
                        output_type=list)
+
+    print(map_ids)
 
     map_paths_df = query_db(db, 'map_log', 'file_path, time_created',
                             ['map_id', 'is_manual'], [map_ids, 0])
@@ -251,9 +226,11 @@ def loadLabel(img_id):
 def updateDiceScores(img_ids=[]):
     """
     Update DICE scores based on new predictions
+
+    Arguments:
+    Returns: 
     """
-    print("Updating Dice Scores...")
-    dice_score = {}
+    print("Updating Dice scores...")
 
     if img_ids == []:
         img_ids = query_db(db, 'image_log', 'image_id', output_type=list)
@@ -261,79 +238,182 @@ def updateDiceScores(img_ids=[]):
     for img_id in img_ids:
         label = loadLabel(img_id)
         prediction = loadLatestPrediction(img_id)
-        dice_score[img_id] = dice(label, prediction)
+        dice_score = dice(label, prediction)
+        update_db(db, 'image_log', 'metric', dice_score, 'image_id', img_id)
+        print(f"Image ID: {img_id}; Updated Dice Score: {dice_score}")
 
-    print(f"Updated Dice Score: {dice_score}")
+    print("Dice scores updated!")
 
-    return dice_score
+    return None
 
 
-def samplebyDice(dice_score, sample_size):
+def samplebyDice(sample_size):
     """
     Sample images with the lowest Dice score
+
+    Arguments:
+        sample_size: the number of images to sample
+    Returns:
+        images: 
     """
-    sorted_dice_score = {
-        image_id: score
-        for image_id, score in sorted(dice_score.items(),
-                                      key=lambda item: item[1])
-    }
-    print(f"Sorted Dice Score: {sorted_dice_score}")
-    #Return image ids of images with 10 lowest DICE scores
-    image_ids = list(sorted_dice_score.keys())
-    image_ids = image_ids[:sample_size]
+    # sorted_dice_score = {
+    #     image_id: score
+    #     for image_id, score in sorted(dice_score.items(),
+    #                                   key=lambda item: item[1])
+    # }
+    # print(f"Sorted Dice Score: {sorted_dice_score}")
+    # #Return image ids of images with 10 lowest DICE scores
+    # image_ids = list(sorted_dice_score.keys())
+    # image_ids = image_ids[:sample_size]
+
+    # images = []
+    # print("Sampled images:")
+
+    img_df = query_db(db, "image_log")
+    img_df.sort_values(by=['metric'], ascending=True)
+    print(img_df)
+
+    sampled_df = img_df.head(sample_size)
 
     images = []
-    print("Sampled images:")
-    for image_id in image_ids:
+    # for image_id in image_ids:
+    for index, row in sampled_df.iterrows():
+        file_path = row['file_path']
 
-        file_path = query_db(db,
-                             'image_log',
-                             'file_path', ['image_id'], [image_id],
-                             output_type=str)
         print(file_path)
+        # !- data sent to the front end
         filename = file_path.replace('data/train/image/', '')
         filename = filename.replace('.npy', '.png')
 
+        #Resize image to canvas dimensions
+        image_data = np.load(file_path)
+        image_data = image_data * 80
+        image_max = np.max(image_data)
+        image_data = resizeArray(image_data, canvas_height, canvas_width)
+        image_data = image_data.tolist()
+
         images.append({
-            "image_id": image_id,
+            "image_id": row['image_id'],
             "disease": "Stroke",
-            "path": filename
+            "path": filename,
+            "data": image_data,
+            "range": image_max + 1
         })
 
     return images
 
-def sync_db():
+def sync_train_log():
     """
     Sync each table in database with the local directories
+
+    Arguments: None
+    Returns: None
     """
 
-    try:
-        con = sqlite3.connect(db)
-        cur = con.cursor()
-    except sqlite3.Error as error:
-        print('Failed to sync database', error)
-    finally:
-        if (con):
-            con.close()
+    print("Syncing traing log and train-to-image log with /models...")
 
-    return None
-
-    # def deleteRecord():
     # try:
-    #     con = sqlite3.connect('active_learning_20191210.db')
-    #     cursor = con.cursor()
-    #     print("Connected to SQLite")
+        #Find existing model paths
+    model_names = listDirectory('models')
+    model_paths_in_folder = []
+    for model_name in model_names:
+        model_paths_in_folder.append('models/' + model_name)
+    model_paths_in_folder = set(model_paths_in_folder)
+    print(f"Model paths in /models: {model_paths_in_folder}")
 
-    #     # Deleting single record now
-    #     sql_delete_query = """DELETE from training_log where training_id = 0"""
-    #     cursor.execute(sql_delete_query)
-    #     con.commit()
-    #     print("Record deleted successfully ")
-    #     cursor.close()
+    con = sqlite3.connect(db)
+    cur = con.cursor()
 
+    training_df = query_db(db, 'training_log')
+    model_paths_in_db = training_df['file_path'].tolist()
+    model_paths_in_db = set(model_paths_in_db)
+    print(f"Model paths in training log: {model_paths_in_db}")
+
+    #Remove deleted models from training log and train_to_image log
+    deleted_model_paths = model_paths_in_db.difference(model_paths_in_folder)
+    print(f"Detected missing models: {deleted_model_paths}")
+    for deleted_model_path in deleted_model_paths:
+        
+        training_id = training_df[training_df['file_path'] == deleted_model_path]['training_id'].iat[0] 
+
+        sql_delete_query = "DELETE from train_to_image_log where training_id = " + str(training_id)
+        cur.execute(sql_delete_query)
+
+        sql_delete_query = "DELETE from training_log where training_id = " + str(training_id)
+        cur.execute(sql_delete_query)
+
+        print(f"Deleted fom training log: {deleted_model_path}")
+
+    #Create entries for manually added models
+    added_model_paths = model_paths_in_folder.difference(model_paths_in_db)
+    print(f"Detected added models: {added_model_paths}")
+    for added_model_path in added_model_paths:
+        now = datetime.now()
+        
+        from_scratch = added_model_path.endswith('init.hdf5')
+        print(from_scratch)
+
+        training_entry = (str(now), added_model_path, from_scratch)
+        insert_into_db(db, 'training_log', '(training_time, file_path, from_scratch)', training_entry)
+        
+        print(f"Added to training log: {added_model_path}")
+
+    print("Finished syncing!")
+
+    con.commit()
+    con.close()
     # except sqlite3.Error as error:
-    #     print("Failed to delete record from sqlite table", error)
+    #     print('Failed to sync database', error)
     # finally:
     #     if (con):
     #         con.close()
-    #         print("the sqlite connection is closed")
+    #         print(f"Finished syncing!")
+    #     return "Training log successully synced!"
+
+    return 'Training log successfully synced!'
+
+
+def sync_map_log():
+    """
+    Sync map log and train/image (corrected maps) with train/label
+
+    Arguments: None
+    Returns: None
+    """
+
+    print(f"Syncing map log and image-to-map log with data/train...")
+
+    #Map paths of maps in train/label
+    map_names = listDirectory("data/train/label")
+    map_paths_in_folder = []
+    for map_name in map_names:
+        map_paths_in_folder.append("data/train/label/" + map_name)
+    map_paths_in_folder = set(map_paths_in_folder)
+
+    #Map paths of corrected maps in database
+    map_paths_in_db = query_db(db, 'map_log', 'file_path', ['is_manual'], [True], output_type = list)
+    map_paths_in_db = set(map_paths_in_db)
+
+    #Find paths of deleted paths
+    deleted_paths = map_paths_in_db.difference(map_paths_in_folder)
+    print(f"Detected missing maps:{deleted_paths}")
+
+    for deleted_path in deleted_paths:
+        #Delete from image folder
+        deleted_path = deleted_path.replace('label', 'image')
+        removeFile(deleted_path)
+        print(f"Removed {deleted_path}")
+
+    if len(deleted_paths) != 0:
+        #Map IDs of deleted maps
+        map_ids = query_db(db, 'map_log', 'map_id', ['file_path'], [list(deleted_paths)], output_type=list)
+        
+        #Remove entries from image_to_map log
+        delete_from_db(db, 'image_to_map_log', 'map_id', map_ids)
+        print("Updated image-to-map log!")
+
+        #Remove entries from map_log
+        delete_from_db(db, 'map_log', 'map_id', map_ids)
+        print("Updated map log!")
+
+    return "Image log successfully synced!"

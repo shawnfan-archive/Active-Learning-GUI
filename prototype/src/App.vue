@@ -1,26 +1,30 @@
 <template>
-  <div id="app">
-    <router-view></router-view>
-  </div>
+  <v-app>
+    <navigation></navigation>
+
+    <v-content>
+      <router-view></router-view>
+    </v-content>
+  </v-app>
 </template>
 
 <script>
-import ActiveLearning from './components/ActiveLearning'
+import ActiveLearning from "./components/ActiveLearning";
+import Navigation from "./components/Navigation";
 
 export default {
   name: "app",
-  data() {
-  },
-  methods: {
-  },
+  data() {},
+  methods: {},
   components: {
-    'activeLearning': ActiveLearning
+    activeLearning: ActiveLearning,
+    navigation: Navigation
   }
 };
 </script>
 
 <style scoped>
-h1{
-  font-family: "Arial"
+h1 {
+  font-family: "Arial";
 }
 </style>
